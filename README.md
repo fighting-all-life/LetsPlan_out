@@ -199,8 +199,7 @@ Let-sPlan/
 
 欢迎提 Issue 和 PR！
 
-- 🐛 报告 Bug → [GitHub Issues](../../issues)
-- 💡 功能建议 → [GitHub Discussions](../../discussions)
+- 🐛 报告 Bug / 💡 功能建议 → [GitHub Issues](https://github.com/fighting-all-life/LetsPlan_out/issues)
 
 ---
 
@@ -212,8 +211,6 @@ Let-sPlan/
 
 ## 🙏 致谢
 
-- 🐱 [BongoCat](https://github.com/ayangweb/BongoCat) — 桌宠互动灵感来源
-- 🐶 [VPet](https://github.com/LorisYounger/VPet) — 情绪养成系统参考
 - ⚡ [Electron](https://www.electronjs.org/) — 桌面应用框架
 - ⚛️ [React](https://react.dev/) — UI 框架
 - 🎨 [lucide-react](https://lucide.dev/) — 图标库
