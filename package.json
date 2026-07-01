@@ -1,0 +1,103 @@
+{
+  "name": "letsplan",
+  "version": "0.1.0",
+  "description": "A local-first daily planning desktop app.",
+  "private": true,
+  "author": "LetsPlan",
+  "license": "UNLICENSED",
+  "type": "module",
+  "main": "dist/src/main/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "build:icon": "node scripts/generateWindowsIcon.cjs",
+    "build:app": "npm run build && npm run build:ui",
+    "dev:ui": "vite --config vite.ui.config.ts",
+    "dev:electron": "npm run build && node scripts/runElectron.mjs --dev-server",
+    "build:ui": "vite build --config vite.ui.config.ts",
+    "preview:ui": "vite preview --config vite.ui.config.ts",
+    "start": "npm run build:app && node scripts/runElectron.mjs",
+    "package:win": "npm run build:icon && npm run build:app && node scripts/prepareReleaseConfig.mjs --disabled && npm run clean:release && electron-builder --win --x64 --dir --publish=never",
+    "dist:win": "npm run build:icon && npm run build:app && node scripts/prepareReleaseConfig.mjs --disabled && npm run clean:release && electron-builder --win=nsis --x64 --publish=never",
+    "dist:win:msi": "npm run build:icon && npm run build:app && node scripts/prepareReleaseConfig.mjs --disabled && electron-builder --win=msi --x64 --publish=never",
+    "dist:win:all": "npm run build:icon && npm run build:app && node scripts/prepareReleaseConfig.mjs --disabled && npm run clean:release && electron-builder --win nsis --win msi --x64 --publish=never",
+    "package:release:zip": "node scripts/packageReleaseZip.mjs",
+    "smoke:package": "node scripts/smokePackaged.mjs",
+    "verify:release": "npm run package:win && npm run smoke:package",
+    "test": "vitest run",
+    "test:integration": "npm run build:app && node scripts/runIntegration.mjs",
+    "test:unit": "vitest run tests/unit",
+    "typecheck": "tsc --noEmit",
+    "verify:electron": "npm run test:integration",
+    "smoke:installer": "node scripts/smokeInstaller.mjs",
+    "smoke:pet-drag": "node scripts/smokePetDrag.mjs",
+    "verify:release:installer": "npm run dist:win && npm run smoke:installer",
+    "clean:release": "node scripts/cleanRelease.mjs",
+    "release:config": "node scripts/prepareReleaseConfig.mjs --require-signing",
+    "dist:win:signed": "npm run build:icon && npm run build:app && npm run release:config && npm run clean:release && electron-builder --win=nsis --x64 --publish=never",
+    "release:stage": "node scripts/stageReleaseChannel.mjs",
+    "verify:release:channel": "node scripts/verifyReleaseChannel.mjs",
+    "verify:release:signature": "node scripts/verifyWindowsSignature.mjs",
+    "release:win": "npm run dist:win:signed && npm run release:stage && npm run verify:release:channel && npm run verify:release:signature"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9",
+    "lucide-react": "^1.21.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^42.5.0",
+    "electron-builder": "^26.15.3",
+    "typescript": "^5.8.3",
+    "vite": "^7.3.6",
+    "vitest": "^3.2.0"
+  },
+  "build": {
+    "appId": "com.letsplan.desktop",
+    "productName": "LetsPlan",
+    "directories": {
+      "buildResources": "build",
+      "output": "release-win"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "include": "build/installer.nsh",
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "LetsPlan",
+      "menuCategory": "LetsPlan"
+    },
+    "msi": {
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "LetsPlan",
+      "menuCategory": "LetsPlan"
+    },
+    "electronDist": "node_modules/electron/dist",
+    "npmRebuild": false
+  }
+}
+

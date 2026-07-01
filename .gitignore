@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-ui/
+release-win/
+*.exe
+*.msi
+*.zip
+*.blockmap
+latest.yml
