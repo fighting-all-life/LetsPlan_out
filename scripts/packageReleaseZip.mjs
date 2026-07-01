@@ -61,13 +61,17 @@ try {
 
   // Copy unpacked (portable) directory
   if (existsSync(unpackedDir)) {
-    runPS(`Copy-Item -LiteralPath '${esc(unpackedDir)}\\*' -Destination '${esc(portableStaging)}\\' -Recurse -Force`);
+    runPS(`Copy-Item -Path '${esc(unpackedDir)}\\*' -Destination '${esc(portableStaging)}\\' -Recurse -Force`);
     console.log(`[package-zip]   + 免安装版/ (${productName}.exe + runtime)`);
   }
 
   // Create zip
   console.log(`[package-zip] Creating ${zipName} ...`);
-  runPS(`Compress-Archive -LiteralPath '${esc(staging)}\\*' -DestinationPath '${esc(zipPath)}' -Force`);
+  runPS(`Compress-Archive -Path '${esc(staging)}\\*' -DestinationPath '${esc(zipPath)}' -Force`);
+  if (!existsSync(zipPath)) {
+    console.error(`[package-zip] Failed to create ${zipName}.`);
+    process.exit(1);
+  }
 
   const sizeMB = (statSync(zipPath).size / (1024 * 1024)).toFixed(1);
   console.log(`[package-zip] ✅ ${zipName} (${sizeMB} MB)`);

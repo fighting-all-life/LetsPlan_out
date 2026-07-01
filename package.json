@@ -1,6 +1,6 @@
 {
   "name": "letsplan",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A local-first daily planning desktop app.",
   "private": true,
   "author": "LetsPlan",

@@ -40,15 +40,19 @@ describe("ui App", () => {
     expect(html).not.toContain("历史概览");
   });
 
-  it("renders control center home with only three category entries", () => {
+  it("renders control center home with category entries and common settings", () => {
     const html = renderToString(<App initialPlan={mockDailyPlan} initialRoute="control-center" />);
 
     expect(html).toContain("data-control-route=\"home\"");
     expect(html).toContain("data-e2e=\"control-category-pet\"");
     expect(html).toContain("data-e2e=\"control-category-behavior\"");
     expect(html).toContain("data-e2e=\"control-category-intervention\"");
+    expect(html).toContain("data-e2e=\"common-feature-settings\"");
+    expect(html).toContain("\u5e38\u7528\u529f\u80fd");
+    expect(html).toContain("\u5f00\u673a\u81ea\u542f");
+    expect(html).toContain("\u5386\u53f2\u72ec\u7acb\u7a97\u53e3");
+    expect(html).toContain("\u5b8c\u6210\u52a8\u753b");
     expect(html).not.toContain("data-e2e=\"pet-character-setting\"");
-    expect(html).not.toContain("开机自启");
   });
 
   it("renders control center detail routes without flattening all settings", () => {
@@ -61,7 +65,11 @@ describe("ui App", () => {
     expect(petHtml).not.toContain("data-e2e=\"pet-behavior-setting\"");
 
     expect(behaviorHtml).toContain("data-e2e=\"control-page-behavior\"");
-    expect(behaviorHtml).toContain("开机自启");
+    expect(behaviorHtml).toContain("data-e2e=\"common-feature-settings\"");
+    expect(behaviorHtml).toContain("\u5f00\u673a\u81ea\u542f");
+    expect(behaviorHtml).toContain("\u5173\u95ed\u9690\u85cf\u5230\u6258\u76d8");
+    expect(behaviorHtml).toContain("\u5386\u53f2\u72ec\u7acb\u7a97\u53e3");
+    expect(behaviorHtml).toContain("\u5b8c\u6210\u52a8\u753b");
     expect(behaviorHtml).toContain("data-e2e=\"pet-behavior-setting\"");
     expect(behaviorHtml).toContain("点击阈值");
     expect(behaviorHtml).toContain("连续左键点击达到该次数");
