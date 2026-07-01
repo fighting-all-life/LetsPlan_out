@@ -6,7 +6,7 @@
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React" />
   <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/license-UNLICENSED-lightgrey?style=flat-square" alt="License" />
-  <img src="https://img.shields.io/badge/version-0.1.0-blue?style=flat-square" alt="Version" />
+  <img src="https://img.shields.io/badge/version-0.1.1-blue?style=flat-square" alt="Version" />
 </p>
 
 <p align="center">
@@ -97,7 +97,7 @@ npm run package:win
 npm run dist:win
 ```
 
-产物 `release-win/LetsPlan-0.1.0-win-x64.exe`，支持桌面快捷方式、开始菜单、自定义安装路径。
+产物 `release-win/LetsPlan-0.1.1-win-x64.exe`，支持桌面快捷方式、开始菜单、自定义安装路径。
 
 ### 系统要求
 
@@ -114,8 +114,8 @@ npm run dist:win
 
 | 下载方式 | 文件 | 说明 |
 |----------|------|------|
-| 📦 **一键安装包 (.exe)** | `LetsPlan-0.1.0-win-x64.exe` | NSIS 安装包，支持桌面快捷方式、开始菜单、自定义安装路径 |
-| 💼 **MSI 安装包 (.msi)** | `LetsPlan-0.1.0-win-x64.msi` | Windows Installer 标准格式 |
+| 📦 **一键安装包 (.exe)** | `LetsPlan-0.1.1-win-x64.exe` | NSIS 安装包，支持桌面快捷方式、开始菜单、自定义安装路径 |
+| 💼 **MSI 安装包 (.msi)** | `LetsPlan-0.1.1-win-x64.msi` | Windows Installer 标准格式 |
 | 🟢 **免安装版** | `win-unpacked/LetsPlan.exe` | 绿色免安装，解压即用，不写注册表 |
 
 > ⚠️ 当前安装包未做正式代码签名，Windows 可能显示"未知发布者"提示，点击"仍要运行"即可。
