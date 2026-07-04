@@ -1,4 +1,4 @@
-﻿import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
@@ -50,6 +50,7 @@ describe("LetsPlanApi", () => {
     expect(view.doneTasks).toEqual([]);
     expect(view.stats).toEqual({ total: 0, doneCount: 0, percentage: 0 });
     expect(view.isCompleted).toBe(false);
+    expect(view.agentInsight).toMatchObject({ risk: "watch", focus: "plan" });
   });
 
   it("does not create a plan when reading a missing historical date", () => {

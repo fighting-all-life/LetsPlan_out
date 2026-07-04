@@ -25,7 +25,8 @@ describe("app settings", () => {
       nightlySummaryTime: "22:15",
       petClickDodgeThreshold: 2,
       petDodgeDistance: 400,
-      petBurstDodgeThreshold: 99
+      petBurstDodgeThreshold: 99,
+      mainQuestByDate: { "2026-07-04": 2, "2026-07-05": "3", bad: 4, "2026-07-06": 0 }
     })).toMatchObject({
       hideToTrayOnClose: false,
       showCompletionAnimation: true,
@@ -36,7 +37,8 @@ describe("app settings", () => {
       nightlySummaryTime: "22:15",
       petClickDodgeThreshold: 3,
       petDodgeDistance: 320,
-      petBurstDodgeThreshold: 60
+      petBurstDodgeThreshold: 60,
+      mainQuestByDate: { "2026-07-04": 2, "2026-07-05": 3 }
     });
   });
 
@@ -56,7 +58,8 @@ describe("app settings", () => {
       nightlySummaryTime: "22:10",
       petClickDodgeThreshold: 12,
       petDodgeDistance: 180,
-      petBurstDodgeThreshold: 18
+      petBurstDodgeThreshold: 18,
+      mainQuestByDate: { "2026-07-04": 1 }
     })).toMatchObject({
       hideToTrayOnClose: false,
       showCompletionAnimation: false,
@@ -67,7 +70,8 @@ describe("app settings", () => {
       nightlySummaryTime: "22:10",
       petClickDodgeThreshold: 12,
       petDodgeDistance: 180,
-      petBurstDodgeThreshold: 18
+      petBurstDodgeThreshold: 18,
+      mainQuestByDate: { "2026-07-04": 1 }
     });
     expect(createAppSettingsStore({ getPath: () => userDataPath }).getAppSettings()).toMatchObject({
       hideToTrayOnClose: false,
@@ -77,7 +81,8 @@ describe("app settings", () => {
       nightlySummaryTime: "22:10",
       petClickDodgeThreshold: 12,
       petDodgeDistance: 180,
-      petBurstDodgeThreshold: 18
+      petBurstDodgeThreshold: 18,
+      mainQuestByDate: { "2026-07-04": 1 }
     });
   });
 

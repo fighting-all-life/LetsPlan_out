@@ -53,7 +53,7 @@ function runElectron() {
     let settled = false;
     const timeout = setTimeout(() => {
       fail(new Error(`[pet-drag-smoke] timed out.\nstdout:\n${stdout}\nstderr:\n${stderr}`));
-    }, 180000);
+    }, 210000);
 
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");

@@ -686,7 +686,7 @@ async function runE2EVerification(mainWindow: BrowserWindow): Promise<void> {
     result = await mainWindow.webContents.executeJavaScript(
       `
         (async () => {
-          const waitFor = (predicate, timeoutMs = 5000) => new Promise((resolve, reject) => {
+          const waitFor = (predicate, label = "renderer state", timeoutMs = 10000) => new Promise((resolve, reject) => {
             const startedAt = Date.now();
             const tick = () => {
               if (predicate()) {
@@ -694,7 +694,7 @@ async function runE2EVerification(mainWindow: BrowserWindow): Promise<void> {
                 return;
               }
               if (Date.now() - startedAt >= timeoutMs) {
-                reject(new Error("Timed out waiting for renderer state."));
+                reject(new Error("Timed out waiting for " + label + ": " + String(predicate).slice(0, 180)));
                 return;
               }
               setTimeout(tick, 50);
@@ -805,6 +805,60 @@ async function runE2EVerification(mainWindow: BrowserWindow): Promise<void> {
             return { ok: false, reason: "Edited task was not rendered." };
           }
 
+          const mainQuestButton = taskItem.querySelector('[data-e2e="toggle-main-quest"]');
+          if (!mainQuestButton) {
+            return { ok: false, reason: "Main Quest toggle button was not rendered." };
+          }
+          mainQuestButton.click();
+          await waitFor(() => {
+            const panel = document.querySelector('[data-e2e="main-quest-panel"]');
+            const currentTaskItem = Array.from(document.querySelectorAll(".task-item")).find((node) => node.textContent.includes(taskContent));
+            return panel?.textContent.includes(taskContent) && currentTaskItem?.querySelector('[data-e2e="main-quest-badge"]');
+          });
+
+          const secondTaskContent = "E2E alternate main quest " + Date.now();
+          await waitFor(() => document.querySelector('[data-e2e="task-content-input"]') && document.querySelector(".add-button:not(:disabled)"), "second task form ready");
+          const secondTaskInput = document.querySelector('[data-e2e="task-content-input"]');
+          const secondAddButton = document.querySelector(".add-button:not(:disabled)");
+          if (!secondTaskInput || !secondAddButton) {
+            return { ok: false, reason: "Second task form controls were not rendered." };
+          }
+          valueSetter.call(secondTaskInput, secondTaskContent);
+          secondTaskInput.dispatchEvent(new Event("input", { bubbles: true }));
+          secondAddButton.click();
+          await waitFor(() => Array.from(document.querySelectorAll(".task-item p")).some((node) => node.textContent === secondTaskContent), "second task render");
+
+          let secondTaskItem = Array.from(document.querySelectorAll(".task-item")).find((node) => node.textContent.includes(secondTaskContent));
+          const secondMainQuestButton = secondTaskItem ? secondTaskItem.querySelector('[data-e2e="toggle-main-quest"]') : null;
+          if (!secondTaskItem || !secondMainQuestButton) {
+            return { ok: false, reason: "Second task Main Quest controls were not rendered." };
+          }
+          secondMainQuestButton.click();
+          await waitFor(() => {
+            const panel = document.querySelector('[data-e2e="main-quest-panel"]');
+            const firstTaskItem = Array.from(document.querySelectorAll(".task-item")).find((node) => node.textContent.includes(taskContent));
+            const alternateTaskItem = Array.from(document.querySelectorAll(".task-item")).find((node) => node.textContent.includes(secondTaskContent));
+            return panel?.textContent.includes(secondTaskContent)
+              && !firstTaskItem?.querySelector('[data-e2e="main-quest-badge"]')
+              && alternateTaskItem?.querySelector('[data-e2e="main-quest-badge"]');
+          });
+
+          secondTaskItem = Array.from(document.querySelectorAll(".task-item")).find((node) => node.textContent.includes(secondTaskContent));
+          secondTaskItem?.querySelector('[data-e2e="toggle-main-quest"]')?.click();
+          await waitFor(() => !document.querySelector('[data-e2e="main-quest-panel"]') && !document.querySelector('[data-e2e="main-quest-badge"]'));
+
+          taskItem = Array.from(document.querySelectorAll(".task-item")).find((node) => node.textContent.includes(taskContent));
+          const restoredMainQuestButton = taskItem ? taskItem.querySelector('[data-e2e="toggle-main-quest"]') : null;
+          if (!taskItem || !restoredMainQuestButton) {
+            return { ok: false, reason: "Restored Main Quest task controls were not rendered." };
+          }
+          restoredMainQuestButton.click();
+          await waitFor(() => {
+            const panel = document.querySelector('[data-e2e="main-quest-panel"]');
+            const currentTaskItem = Array.from(document.querySelectorAll(".task-item")).find((node) => node.textContent.includes(taskContent));
+            return panel?.textContent.includes(taskContent) && currentTaskItem?.querySelector('[data-e2e="main-quest-badge"]');
+          });
+
           const completeButton = taskItem.querySelector('[data-e2e="complete-task"]');
           if (!completeButton) {
             return { ok: false, reason: "Complete button was not rendered." };
@@ -812,6 +866,10 @@ async function runE2EVerification(mainWindow: BrowserWindow): Promise<void> {
           completeButton.click();
 
           await waitFor(() => Array.from(document.querySelectorAll(".task-item.is-done p")).some((node) => node.textContent === taskContent));
+          await waitFor(() => {
+            const panel = document.querySelector('[data-e2e="main-quest-panel"].is-done');
+            return panel?.textContent.includes(taskContent);
+          });
 
           const doneTaskItem = Array.from(document.querySelectorAll(".task-item.is-done")).find((node) =>
             node.textContent.includes(taskContent)
@@ -823,6 +881,15 @@ async function runE2EVerification(mainWindow: BrowserWindow): Promise<void> {
           deleteButton.click();
 
           await waitFor(() => !Array.from(document.querySelectorAll(".task-item p")).some((node) => node.textContent === taskContent));
+          await waitFor(() => !document.querySelector('[data-e2e="main-quest-panel"]') && !document.querySelector('[data-e2e="main-quest-badge"]'));
+
+          const remainingSecondTaskItem = Array.from(document.querySelectorAll(".task-item")).find((node) => node.textContent.includes(secondTaskContent));
+          const secondDeleteButton = remainingSecondTaskItem ? remainingSecondTaskItem.querySelector('[data-e2e="delete-task"]') : null;
+          if (!secondDeleteButton) {
+            return { ok: false, reason: "Second task delete button was not rendered." };
+          }
+          secondDeleteButton.click();
+          await waitFor(() => !Array.from(document.querySelectorAll(".task-item p")).some((node) => node.textContent === secondTaskContent));
 
           return { ok: true, planDate: startedPlan.plan.planDate };
         })()
@@ -924,6 +991,17 @@ async function runPetDragE2EVerification(): Promise<void> {
       if (petMousePassthroughState !== expected) {
         throw new Error(`${label} passthrough mismatch: actual=${petMousePassthroughState} expected=${expected}`);
       }
+    };
+
+    const waitForPassthrough = async (label: string, expected: boolean, timeoutMs = 1500): Promise<void> => {
+      const startedAt = Date.now();
+      while (Date.now() - startedAt <= timeoutMs) {
+        if (petMousePassthroughState === expected) {
+          return;
+        }
+        await delay(50);
+      }
+      assertPassthrough(label, expected);
     };
 
     const assertPetDizzy = async (label: string, expected: boolean): Promise<void> => {
@@ -1160,13 +1238,11 @@ async function runPetDragE2EVerification(): Promise<void> {
       }
 
       await dispatch("pointerup", moveX, moveY, 0);
-      await delay(300);
-      assertPassthrough(`round ${roundIndex + 1} after release over pet`, false);
+      await waitForPassthrough(`round ${roundIndex + 1} after release over pet`, false);
 
       const released = await getRigSnapshot();
       await dispatch("pointermove", moveX + 120, moveY + 60, 0, "outside");
-      await delay(500);
-      assertPassthrough(`round ${roundIndex + 1} outside after release`, true);
+      await waitForPassthrough(`round ${roundIndex + 1} outside after release`, true);
       const afterRelease = await getRigSnapshot();
       if (released.left !== afterRelease.left || released.top !== afterRelease.top) {
         throw new Error(`Pet moved after round ${roundIndex + 1} release: before=${JSON.stringify(released)} after=${JSON.stringify(afterRelease)}`);
@@ -1229,6 +1305,113 @@ async function runPetDragE2EVerification(): Promise<void> {
     await dragAcrossFullWorkArea("edge pass 1");
     await dragAcrossFullWorkArea("edge pass 2");
 
+    type PetInterventionE2ELevel = DailyPlanView["intervention"]["level"];
+    type PetInterventionE2EAction = DailyPlanView["intervention"]["action"];
+    interface PetInterventionStageSnapshot {
+      stage: string | null;
+      className: string;
+      hasForceText: boolean;
+      forceText: string;
+      left: number;
+      top: number;
+      width: number;
+      height: number;
+      viewportWidth: number;
+      viewportHeight: number;
+    }
+
+    const sendPetInterventionStatus = async (level: PetInterventionE2ELevel, action: PetInterventionE2EAction, message: string): Promise<void> => {
+      targetWindow.webContents.send(RENDERER_COMMAND_CHANNELS.updatePetStatus, {
+        total: 1,
+        doneCount: 0,
+        percentage: 0,
+        isCompleted: false,
+        interventionLevel: level,
+        interventionAction: action,
+        interventionMessage: message,
+        nightlySummary: {
+          shouldShow: false,
+          planDate: formatPlanDate(),
+          summaryTime: "21:30",
+          total: 1,
+          doneCount: 0,
+          pendingCount: 1,
+          pendingTasks: [],
+          message: ""
+        }
+      });
+      await delay(300);
+    };
+
+    const getInterventionStageSnapshot = async (): Promise<PetInterventionStageSnapshot> => targetWindow.webContents.executeJavaScript(
+      `(() => {
+        const shell = document.querySelector('[data-e2e="desktop-pet"]');
+        const rig = document.querySelector('.pet-rig');
+        if (!shell || !rig) {
+          throw new Error('Desktop pet shell or rig was not rendered.');
+        }
+        const forceText = document.querySelector('[data-e2e="pet-force-text-field"]');
+        return {
+          stage: shell.getAttribute('data-intervention-stage'),
+          className: shell.className,
+          hasForceText: Boolean(forceText),
+          forceText: forceText?.textContent || '',
+          left: Math.round(rig.offsetLeft),
+          top: Math.round(rig.offsetTop),
+          width: Math.round(rig.offsetWidth),
+          height: Math.round(rig.offsetHeight),
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight
+        };
+      })()`,
+      true
+    ) as Promise<PetInterventionStageSnapshot>;
+
+    const assertInterventionStage = async (expectedStage: string, label: string): Promise<PetInterventionStageSnapshot> => {
+      const snapshot = await getInterventionStageSnapshot();
+      if (snapshot.stage !== expectedStage) {
+        throw new Error(`${label} stage mismatch: actual=${snapshot.stage} expected=${expectedStage} snapshot=${JSON.stringify(snapshot)}`);
+      }
+      return snapshot;
+    };
+    const forceReminderMessage = "\u5feb\u53bb\u5b66\u4e60\uff01";
+
+    await sendPetInterventionStatus("l1", "hint", "10 minutes idle, move once.");
+    const stage1 = await assertInterventionStage("stage1", "L1 language reminder");
+    if (!stage1.className.includes("pet-action-hint") || stage1.hasForceText) {
+      throw new Error(`L1 reminder rendered unexpected chrome: ${JSON.stringify(stage1)}`);
+    }
+
+    await sendPetInterventionStatus("l2", "pet-approach", "20 minutes idle, bottom runner reminder.");
+    const stage2Start = await assertInterventionStage("stage2", "L2 bottom runner start");
+    await delay(900);
+    const stage2End = await assertInterventionStage("stage2", "L2 bottom runner end");
+    const stage2Bottom = Math.max(0, stage2End.viewportHeight - stage2End.height);
+    if (Math.abs(stage2End.top - stage2Bottom) > 4 || Math.abs(stage2End.left - stage2Start.left) < 12) {
+      throw new Error(`L2 bottom runner did not move along bottom: start=${JSON.stringify(stage2Start)} end=${JSON.stringify(stage2End)}`);
+    }
+
+    await sendPetInterventionStatus("l3", "center-intervention", "30 minutes idle, fullscreen runner reminder.");
+    const stage3Start = await assertInterventionStage("stage3", "L3 fullscreen runner start");
+    await delay(900);
+    const stage3End = await assertInterventionStage("stage3", "L3 fullscreen runner end");
+    if (Math.abs(stage3End.left - stage3Start.left) + Math.abs(stage3End.top - stage3Start.top) < 24) {
+      throw new Error(`L3 fullscreen runner did not move enough: start=${JSON.stringify(stage3Start)} end=${JSON.stringify(stage3End)}`);
+    }
+
+    await sendPetInterventionStatus("l4", "force-animation", forceReminderMessage);
+    const stage4Start = await assertInterventionStage("stage4", "L4 force start");
+    const stage4CenterX = Math.round(Math.max(0, stage4Start.viewportWidth - stage4Start.width) / 2);
+    const stage4CenterY = Math.round(Math.max(0, stage4Start.viewportHeight - stage4Start.height) / 2);
+    if (!stage4Start.hasForceText || !stage4Start.forceText.includes(forceReminderMessage) || Math.abs(stage4Start.left - stage4CenterX) > 4 || Math.abs(stage4Start.top - stage4CenterY) > 4) {
+      throw new Error(`L4 force reminder was not centered with study text: ${JSON.stringify(stage4Start)}`);
+    }
+    await delay(10500);
+    const stage4End = await getInterventionStageSnapshot();
+    if (stage4End.stage === "stage4" || stage4End.hasForceText) {
+      throw new Error(`L4 force reminder did not stop after 10s: ${JSON.stringify(stage4End)}`);
+    }
+    await sendPetInterventionStatus("none", "none", "");
     const dispatchClick = async (screenX: number, screenY: number): Promise<void> => {
       const bounds = targetWindow.getBounds();
       await targetWindow.webContents.executeJavaScript(
@@ -1255,8 +1438,7 @@ async function runPetDragE2EVerification(): Promise<void> {
 
     const clickGrab = await getStageGrabPoint();
     await dispatch("pointermove", clickGrab.screenX, clickGrab.screenY, 0, "stage");
-    await delay(150);
-    assertPassthrough("inside before repeated quick clicks", false);
+    await waitForPassthrough("inside before repeated quick clicks", false);
     const beforeClicks = await getRigSnapshot();
     for (let index = 0; index < 31; index += 1) {
       await dispatchClick(clickGrab.screenX, clickGrab.screenY);
@@ -1325,10 +1507,3 @@ app.on("window-all-closed", () => {
     app.quit();
   }
 });
-
-
-
-
-
-
-

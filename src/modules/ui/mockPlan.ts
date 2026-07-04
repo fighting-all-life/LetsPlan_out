@@ -1,4 +1,5 @@
 import type { DailyPlanView } from "../api/index.js";
+import { buildAgentInsight } from "../api/agentInsight.js";
 import { evaluateIntervention, evaluateNightlySummary } from "../api/intervention.js";
 
 const habits: DailyPlanView["habits"] = [
@@ -109,5 +110,18 @@ export const mockDailyPlan: DailyPlanView = {
     pendingTasks: [],
     doneTasks: [],
     todayDate: "2026-06-27"
+  }),
+  agentInsight: buildAgentInsight({
+    pendingTasks: [],
+    doneTasks: [],
+    habitStats,
+    intervention: evaluateIntervention({
+      now: new Date("2026-06-27T12:00:00.000Z"),
+      pendingTasks: [],
+      doneTasks: [],
+      habitStats,
+      isCompleted: false
+    }),
+    isCompleted: false
   })
 };

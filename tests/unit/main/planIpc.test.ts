@@ -68,8 +68,16 @@ function createPlanView(planDate = "2026-06-27"): DailyPlanView {
       pendingCount: 0,
       pendingTasks: [],
       message: ""
-    }
-  };
+    },
+    agentInsight: {
+      risk: "watch",
+      focus: "plan",
+      score: 0,
+      headline: "Fixture insight",
+      nextAction: "Fixture next action",
+      reason: "Fixture reason",
+      signals: []
+    }  };
 }
 
 function createFakeApi(): PlanApiLike & { calls: string[] } {

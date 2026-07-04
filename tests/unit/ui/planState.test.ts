@@ -34,6 +34,7 @@ describe("ui plan state", () => {
     expect(view.doneTasks).toEqual([]);
     expect(view.stats).toEqual({ total: 0, doneCount: 0, percentage: 0 });
     expect(view.isCompleted).toBe(false);
+    expect(view.agentInsight).toMatchObject({ risk: "watch", focus: "plan" });
   });
 
   it("shifts plan dates across month boundaries", () => {

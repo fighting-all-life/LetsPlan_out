@@ -11,6 +11,7 @@ import type {
   UpdateHabitInput,
   UpdateTaskInput
 } from "../database/types.js";
+import type { AgentInsightSnapshot } from "./agentInsight.js";
 import type { InterventionSnapshot, NightlySummarySnapshot } from "./intervention.js";
 
 export interface DailyPlanView {
@@ -24,6 +25,7 @@ export interface DailyPlanView {
   habitStats: HabitStats;
   intervention: InterventionSnapshot;
   nightlySummary: NightlySummarySnapshot;
+  agentInsight: AgentInsightSnapshot;
 }
 
 export interface AddTaskRequest extends CreateTaskInput {

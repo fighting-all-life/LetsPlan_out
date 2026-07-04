@@ -130,9 +130,32 @@ function assertAppSettingsPatch(value: unknown): AppSettingsPatch {
   if (record.petBurstDodgeThreshold !== undefined) {
     patch.petBurstDodgeThreshold = assertBoundedInteger(record.petBurstDodgeThreshold, "petBurstDodgeThreshold", 4, 60);
   }
+  if (record.mainQuestByDate !== undefined) {
+    patch.mainQuestByDate = assertMainQuestByDate(record.mainQuestByDate);
+  }
 
   return patch;
 }
+function assertMainQuestByDate(value: unknown): Record<string, number> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("mainQuestByDate must be an object.");
+  }
+
+  const record = value as Record<string, unknown>;
+  const patch: Record<string, number> = {};
+  for (const [planDate, taskId] of Object.entries(record)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(planDate)) {
+      throw new Error("mainQuestByDate keys must use YYYY-MM-DD.");
+    }
+    if (typeof taskId !== "number" || !Number.isSafeInteger(taskId) || taskId <= 0) {
+      throw new Error("mainQuestByDate." + planDate + " must be a positive integer.");
+    }
+    patch[planDate] = taskId;
+  }
+
+  return patch;
+}
+
 function assertInterventionThresholdPatch(value: unknown): Partial<InterventionThresholdMinutes> {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("interventionThresholdMinutes must be an object.");

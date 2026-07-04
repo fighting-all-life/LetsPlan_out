@@ -1,4 +1,4 @@
-﻿import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DailyPlanView } from "../../../src/modules/api/index.js";
 import type { AppSettings } from "../../../src/main/appSettings.js";
 import { createRendererStateBroadcaster } from "../../../src/main/rendererState.js";
@@ -45,8 +45,16 @@ function createPlanView(doneCount = 0): DailyPlanView {
       pendingCount: 0,
       pendingTasks: [],
       message: ""
-    }
-  };
+    },
+    agentInsight: {
+      risk: "watch",
+      focus: "plan",
+      score: 0,
+      headline: "Fixture insight",
+      nextAction: "Fixture next action",
+      reason: "Fixture reason",
+      signals: []
+    }  };
 }
 
 function createSettings(petCharacter: AppSettings["petCharacter"] = "cat"): AppSettings {
@@ -60,7 +68,8 @@ function createSettings(petCharacter: AppSettings["petCharacter"] = "cat"): AppS
     nightlySummaryTime: "21:30",
     petClickDodgeThreshold: 10,
     petDodgeDistance: 130,
-    petBurstDodgeThreshold: 16
+    petBurstDodgeThreshold: 16,
+    mainQuestByDate: {}
   };
 }
 

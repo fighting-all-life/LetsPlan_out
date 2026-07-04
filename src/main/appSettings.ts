@@ -12,6 +12,7 @@ import {
 
 export const APP_PET_CHARACTERS = ["cat", "dog", "robot"] as const;
 export type AppPetCharacter = (typeof APP_PET_CHARACTERS)[number];
+export type MainQuestByDate = Record<string, number>;
 
 export interface AppSettings {
   hideToTrayOnClose: boolean;
@@ -24,6 +25,7 @@ export interface AppSettings {
   petClickDodgeThreshold: number;
   petDodgeDistance: number;
   petBurstDodgeThreshold: number;
+  mainQuestByDate: MainQuestByDate;
 }
 
 export type AppSettingsPatch = Partial<Omit<AppSettings, "interventionThresholdMinutes">> & {
@@ -49,7 +51,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   nightlySummaryTime: DEFAULT_NIGHTLY_SUMMARY_TIME,
   petClickDodgeThreshold: 10,
   petDodgeDistance: 130,
-  petBurstDodgeThreshold: 16
+  petBurstDodgeThreshold: 16,
+  mainQuestByDate: {}
 };
 
 export function createAppSettingsStore(app: AppSettingsAppLike, filePath?: string): AppSettingsStore {
@@ -91,7 +94,8 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     nightlySummaryTime: normalizeSummaryTime(record.nightlySummaryTime),
     petClickDodgeThreshold: normalizeBoundedInteger(record.petClickDodgeThreshold, DEFAULT_APP_SETTINGS.petClickDodgeThreshold, 3, 30),
     petDodgeDistance: normalizeBoundedInteger(record.petDodgeDistance, DEFAULT_APP_SETTINGS.petDodgeDistance, 40, 320),
-    petBurstDodgeThreshold: normalizeBoundedInteger(record.petBurstDodgeThreshold, DEFAULT_APP_SETTINGS.petBurstDodgeThreshold, 4, 60)
+    petBurstDodgeThreshold: normalizeBoundedInteger(record.petBurstDodgeThreshold, DEFAULT_APP_SETTINGS.petBurstDodgeThreshold, 4, 60),
+    mainQuestByDate: normalizeMainQuestByDate(record.mainQuestByDate)
   };
 }
 
@@ -116,6 +120,22 @@ function normalizeBoundedInteger(value: unknown, fallback: number, min: number, 
   }
 
   return Math.max(min, Math.min(max, Math.trunc(numericValue)));
+}
+
+function normalizeMainQuestByDate(value: unknown): MainQuestByDate {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  const normalized: MainQuestByDate = {};
+  for (const [planDate, taskIdValue] of Object.entries(value as Record<string, unknown>)) {
+    const taskId = typeof taskIdValue === "number" ? taskIdValue : Number(taskIdValue);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(planDate) && Number.isSafeInteger(taskId) && taskId > 0) {
+      normalized[planDate] = taskId;
+    }
+  }
+
+  return normalized;
 }
 
 function readAppSettings(filePath: string): AppSettings {

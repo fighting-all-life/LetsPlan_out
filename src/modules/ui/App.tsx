@@ -82,6 +82,7 @@ interface AppProps {
   planClient?: PlanClient | null;
   initialRoute?: MainRoute;
   initialControlRoute?: ControlCenterRoute;
+  initialAppSettings?: AppSettingsState;
 }
 
 interface EditingTaskDraft {
@@ -101,13 +102,19 @@ const defaultAppSettings: AppSettingsState = {
   nightlySummaryTime: "21:30",
   petClickDodgeThreshold: 10,
   petDodgeDistance: 130,
-  petBurstDodgeThreshold: 16
+  petBurstDodgeThreshold: 16,
+  mainQuestByDate: {}
 };
 
-const DEFAULT_BACKGROUND_COLOR = "#05060a";
+const DEFAULT_BACKGROUND_COLOR = "#F7F3E9";
 const BACKGROUND_COLOR_STORAGE_KEY = "letsplan:background-color";
 const HEX_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 const backgroundPaletteOptions: Array<{ label: string; color: string }> = [
+  { label: "笺纸米白", color: "#F7F3E9" },
+  { label: "宣纸浅杏", color: "#F3E7D0" },
+  { label: "淡竹青", color: "#E9F0E5" },
+  { label: "古铜浅褐", color: "#EEE3CD" },
+  { label: "淡墨灰", color: "#ECEBE7" },
   { label: "赛博黑", color: "#05060a" },
   { label: "青色网格", color: "#07131a" },
   { label: "品红面板", color: "#130816" },
@@ -157,16 +164,25 @@ const petCharacterOptions: Array<{ value: PetCharacter; label: string }> = [
 ];
 
 const interventionThresholdOptions: Array<{ value: InterventionThresholdLevel; label: string; description: string }> = [
-  { value: "l1", label: "L1 轻提示", description: "针对长时间没有完成任务的行为，只显示轻提示，不打断操作。" },
-  { value: "l2", label: "L2 桌宠靠近", description: "继续无进展时，桌宠靠近提醒你回到当前任务。" },
-  { value: "l3", label: "L3 中心干预", description: "长时间拖延后，在屏幕中心弹出确认式干预。" },
-  { value: "l4", label: "L4 强制打断", description: "严重超时无进展时，用强动画打断分心状态。" }
+  { value: "l1", label: "L1 语言提醒", description: "针对长时间没有完成任务的行为，只用气泡文字提醒。" },
+  { value: "l2", label: "L2 底部跑动", description: "继续无进展时，桌宠在桌面底部来回跑动提醒。" },
+  { value: "l3", label: "L3 满屏跑动", description: "长时间拖延后，桌宠在整个桌面范围内跑动提醒。" },
+  { value: "l4", label: "L4 居中打滚", description: "严重超时无进展时，桌宠到桌面中间打滚并飘出快去学习文字 10 秒。" }
 ];
 
 const PET_BURST_DODGE_MS = 10_000;
 const PET_BURST_DODGE_COOLDOWN_MS = 260;
+const PET_FORCE_INTERVENTION_MS = 10_000;
+const PET_FORCE_STUDY_TEXT = "快去学习！";
+const PET_FORCE_TEXT_ITEMS = Array.from({ length: 18 }, (_item, index) => ({
+  id: index,
+  left: `${8 + (index % 6) * 17}%`,
+  top: `${12 + (Math.floor(index / 6) % 3) * 28}%`,
+  delay: `${(index % 6) * 150 + Math.floor(index / 6) * 90}ms`,
+  duration: `${2600 + (index % 3) * 240}ms`
+}));
 
-export function App({ initialPlan, planClient, initialRoute, initialControlRoute }: AppProps) {
+export function App({ initialPlan, planClient, initialRoute, initialControlRoute, initialAppSettings }: AppProps) {
   const client = useMemo(() => planClient ?? getWindowPlanClient(), [planClient]);
   const initialViewMode = useMemo(() => getInitialViewMode(), []);
   const isHistoryWindowView = initialViewMode === "history";
@@ -191,7 +207,7 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
   const [isMutating, setIsMutating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [autoLaunchSettings, setAutoLaunchSettings] = useState<Awaited<ReturnType<PlanClient["getAutoLaunchSettings"]>> | null>(null);
-  const [appSettings, setAppSettings] = useState<AppSettingsState>(defaultAppSettings);
+  const [appSettings, setAppSettings] = useState<AppSettingsState>(initialAppSettings ?? defaultAppSettings);
   const [isSettingsMutating, setIsSettingsMutating] = useState(false);
   const [isCelebrating, setIsCelebrating] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState(() => getInitialBackgroundColor());
@@ -278,7 +294,7 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
 
   useEffect(() => {
     if (!client?.getAppSettings) {
-      setAppSettings(defaultAppSettings);
+      setAppSettings(initialAppSettings ?? defaultAppSettings);
       return;
     }
 
@@ -299,7 +315,7 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
     return () => {
       isMounted = false;
     };
-  }, [client]);
+  }, [client, initialAppSettings]);
   useEffect(() => {
     const shouldCelebrate = shouldTriggerCompletionCelebration(previousCompletionRef.current, planView.isCompleted);
     previousCompletionRef.current = planView.isCompleted;
@@ -354,6 +370,8 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
   const shouldShowInterventionOverlay = (planView.intervention.level === "l3" || planView.intervention.level === "l4") && dismissedInterventionKey !== interventionOverlayKey;
   const shouldShowNightlySummary = activeNightlySummary.shouldShow && dismissedNightlySummaryDate !== activeNightlySummary.planDate;
   const isEmptyRemoteDate = Boolean(client) && planView.plan.id === 0 && planView.tasks.length === 0;
+  const activeMainQuestTaskId = getMainQuestTaskId(appSettings.mainQuestByDate, activePlanDate, planView.tasks);
+  const activeMainQuestTask = activeMainQuestTaskId === null ? null : planView.tasks.find((task) => task.id === activeMainQuestTaskId) ?? null;
   useEffect(() => {
     if (!client || !isToday || isMutating || isSettingsMutating) {
       return;
@@ -527,6 +545,17 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
 
   async function handleToggleAppSetting(settingName: "hideToTrayOnClose" | "showCompletionAnimation" | "openHistoryInNewWindow") {
     await handlePatchAppSettings({ [settingName]: !appSettings[settingName] } as Partial<AppSettingsState>);
+  }
+
+  function handleToggleMainQuest(taskId: number) {
+    if (isBusy) {
+      return;
+    }
+
+    const nextTaskId = activeMainQuestTaskId === taskId ? null : taskId;
+    void handlePatchAppSettings({
+      mainQuestByDate: updateMainQuestByDate(appSettings.mainQuestByDate, activePlanDate, nextTaskId)
+    });
   }
 
   function handlePetCharacterChange(petCharacter: PetCharacter) {
@@ -1093,6 +1122,18 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
                   <small>L1-L4 与每日复盘</small>
                 </button>
               </div>
+              <CommonFeatureSettings
+                autoLaunchEnabled={Boolean(autoLaunchSettings?.openAtLogin)}
+                autoLaunchReady={Boolean(autoLaunchSettings)}
+                hideToTrayOnClose={appSettings.hideToTrayOnClose}
+                openHistoryInNewWindow={appSettings.openHistoryInNewWindow}
+                showCompletionAnimation={appSettings.showCompletionAnimation}
+                disabled={isBusy}
+                onToggleAutoLaunch={() => void handleToggleAutoLaunch()}
+                onToggleHideToTray={() => void handleToggleAppSetting("hideToTrayOnClose")}
+                onToggleOpenHistory={() => void handleToggleAppSetting("openHistoryInNewWindow")}
+                onToggleCompletionAnimation={() => void handleToggleAppSetting("showCompletionAnimation")}
+              />
             </>
           ) : null}
           {currentControlRoute === "pet" ? (
@@ -1125,10 +1166,18 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
                 </button>
                 <strong>行为设置</strong>
               </div>
-              <SettingSwitch icon={<Power size={17} aria-hidden="true" />} label="开机自启" checked={Boolean(autoLaunchSettings?.openAtLogin)} disabled={isBusy || !autoLaunchSettings} onToggle={() => void handleToggleAutoLaunch()} />
-              <SettingSwitch icon={<CheckCircle2 size={17} aria-hidden="true" />} label="关闭隐藏到托盘" checked={appSettings.hideToTrayOnClose} disabled={isBusy} onToggle={() => void handleToggleAppSetting("hideToTrayOnClose")} />
-              <SettingSwitch icon={<ExternalLink size={16} aria-hidden="true" />} label="历史独立窗口" checked={appSettings.openHistoryInNewWindow} disabled={isBusy} onToggle={() => void handleToggleAppSetting("openHistoryInNewWindow")} />
-              <SettingSwitch icon={<Sparkles size={17} aria-hidden="true" />} label="完成动画" checked={appSettings.showCompletionAnimation} disabled={isBusy} onToggle={() => void handleToggleAppSetting("showCompletionAnimation")} />
+              <CommonFeatureSettings
+                autoLaunchEnabled={Boolean(autoLaunchSettings?.openAtLogin)}
+                autoLaunchReady={Boolean(autoLaunchSettings)}
+                hideToTrayOnClose={appSettings.hideToTrayOnClose}
+                openHistoryInNewWindow={appSettings.openHistoryInNewWindow}
+                showCompletionAnimation={appSettings.showCompletionAnimation}
+                disabled={isBusy}
+                onToggleAutoLaunch={() => void handleToggleAutoLaunch()}
+                onToggleHideToTray={() => void handleToggleAppSetting("hideToTrayOnClose")}
+                onToggleOpenHistory={() => void handleToggleAppSetting("openHistoryInNewWindow")}
+                onToggleCompletionAnimation={() => void handleToggleAppSetting("showCompletionAnimation")}
+              />
               <PetBehaviorSetting clickThreshold={appSettings.petClickDodgeThreshold} dodgeDistance={appSettings.petDodgeDistance} burstThreshold={appSettings.petBurstDodgeThreshold} disabled={isBusy} onClickThresholdChange={handlePetClickDodgeThresholdChange} onDodgeDistanceChange={handlePetDodgeDistanceChange} onBurstThresholdChange={handlePetBurstDodgeThresholdChange} />
             </div>
           ) : null}
@@ -1263,6 +1312,10 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
           </div>
         ) : null}
 
+        <AgentInsightPanel insight={planView.agentInsight} />
+
+        {activeMainQuestTask ? <MainQuestPanel task={activeMainQuestTask} /> : null}
+
         {shouldShowInterventionOverlay ? (
           <section className={planView.intervention.level === "l4" ? "intervention-overlay is-force" : "intervention-overlay"} role="alertdialog" aria-label="行为干预" data-e2e="intervention-overlay">
             <div className="intervention-panel">
@@ -1362,6 +1415,7 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
           action="complete"
           disabled={isBusy}
           editingTask={editingTask}
+          mainQuestTaskId={activeMainQuestTaskId}
           onEditDraftChange={handleEditDraftChange}
           onSubmitEdit={handleSubmitTaskEdit}
           onCancelEdit={handleCancelEdit}
@@ -1369,6 +1423,7 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
           onComplete={(taskId) => void handleTaskStatus(taskId, "done")}
           onReopen={(taskId) => void handleTaskStatus(taskId, "pending")}
           onDelete={(taskId) => void handleDeleteTask(taskId)}
+          onToggleMainQuest={handleToggleMainQuest}
           onReorder={(orderedTaskIds) => void handleReorderPendingTasks(orderedTaskIds)}
         />
 
@@ -1380,6 +1435,7 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
           action="reopen"
           disabled={isBusy}
           editingTask={editingTask}
+          mainQuestTaskId={activeMainQuestTaskId}
           onEditDraftChange={handleEditDraftChange}
           onSubmitEdit={handleSubmitTaskEdit}
           onCancelEdit={handleCancelEdit}
@@ -1387,6 +1443,7 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
           onComplete={(taskId) => void handleTaskStatus(taskId, "done")}
           onReopen={(taskId) => void handleTaskStatus(taskId, "pending")}
           onDelete={(taskId) => void handleDeleteTask(taskId)}
+          onToggleMainQuest={handleToggleMainQuest}
         />
 
         <footer className="progress-footer">
@@ -1404,6 +1461,55 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
   );
 }
 
+interface AgentInsightPanelProps {
+  insight: DailyPlanView["agentInsight"];
+}
+
+function AgentInsightPanel({ insight }: AgentInsightPanelProps) {
+  const riskLabel: Record<DailyPlanView["agentInsight"]["risk"], string> = {
+    clear: "稳定",
+    watch: "观察",
+    risk: "风险",
+    blocked: "阻塞"
+  };
+
+  return (
+    <section className={`agent-insight agent-insight-${insight.risk}`} aria-label="Agent 洞察" data-e2e="agent-insight">
+      <div className="agent-insight-head">
+        <Bot size={17} aria-hidden="true" />
+        <span>Agent Insight</span>
+        <strong>{riskLabel[insight.risk]}</strong>
+      </div>
+      <p>{insight.headline}</p>
+      <div className="agent-insight-action">
+        <span>下一步</span>
+        <strong>{insight.nextAction}</strong>
+      </div>
+      <small>{insight.reason}</small>
+      <div className="agent-insight-signals" aria-label="洞察依据">
+        {insight.signals.map((signal) => <span key={signal}>{signal}</span>)}
+      </div>
+    </section>
+  );
+}
+
+interface MainQuestPanelProps {
+  task: Task;
+}
+
+function MainQuestPanel({ task }: MainQuestPanelProps) {
+  return (
+    <section className={task.status === "done" ? "main-quest-panel is-done" : "main-quest-panel"} aria-label="今日主线任务" data-e2e="main-quest-panel">
+      <div className="main-quest-title">
+        <Sparkles size={17} aria-hidden="true" />
+        <span>Main Quest</span>
+        <strong>今日主线</strong>
+      </div>
+      <p>{task.content}</p>
+      <small>{task.status === "done" ? "已完成" : "进行中"}</small>
+    </section>
+  );
+}
 interface SegmentedControlProps<T extends string> {
   label: string;
   options: Array<{ value: T; label: string }>;
@@ -1446,6 +1552,46 @@ function SettingSwitch({ icon, label, checked, disabled, onToggle }: SettingSwit
       <span className="setting-state">{checked ? "开" : "关"}</span>
       <span className="switch-track" aria-hidden="true"><span /></span>
     </button>
+  );
+}
+
+interface CommonFeatureSettingsProps {
+  autoLaunchEnabled: boolean;
+  autoLaunchReady: boolean;
+  hideToTrayOnClose: boolean;
+  openHistoryInNewWindow: boolean;
+  showCompletionAnimation: boolean;
+  disabled: boolean;
+  onToggleAutoLaunch: () => void;
+  onToggleHideToTray: () => void;
+  onToggleOpenHistory: () => void;
+  onToggleCompletionAnimation: () => void;
+}
+
+function CommonFeatureSettings({
+  autoLaunchEnabled,
+  autoLaunchReady,
+  hideToTrayOnClose,
+  openHistoryInNewWindow,
+  showCompletionAnimation,
+  disabled,
+  onToggleAutoLaunch,
+  onToggleHideToTray,
+  onToggleOpenHistory,
+  onToggleCompletionAnimation
+}: CommonFeatureSettingsProps) {
+  return (
+    <div className="common-feature-settings" data-e2e="common-feature-settings">
+      <div className="setting-row-title">
+        <span>{"\u5e38\u7528\u529f\u80fd"}</span>
+      </div>
+      <div className="common-feature-grid">
+        <SettingSwitch icon={<Power size={17} aria-hidden="true" />} label={"\u5f00\u673a\u81ea\u542f"} checked={autoLaunchEnabled} disabled={disabled || !autoLaunchReady} onToggle={onToggleAutoLaunch} />
+        <SettingSwitch icon={<CheckCircle2 size={17} aria-hidden="true" />} label={"\u5173\u95ed\u9690\u85cf\u5230\u6258\u76d8"} checked={hideToTrayOnClose} disabled={disabled} onToggle={onToggleHideToTray} />
+        <SettingSwitch icon={<ExternalLink size={16} aria-hidden="true" />} label={"\u5386\u53f2\u72ec\u7acb\u7a97\u53e3"} checked={openHistoryInNewWindow} disabled={disabled} onToggle={onToggleOpenHistory} />
+        <SettingSwitch icon={<Sparkles size={17} aria-hidden="true" />} label={"\u5b8c\u6210\u52a8\u753b"} checked={showCompletionAnimation} disabled={disabled} onToggle={onToggleCompletionAnimation} />
+      </div>
+    </div>
   );
 }
 
@@ -1799,6 +1945,7 @@ interface TaskSectionProps {
   action: "complete" | "reopen";
   disabled: boolean;
   editingTask: EditingTaskDraft | null;
+  mainQuestTaskId: number | null;
   onEditDraftChange: (patch: Partial<Omit<EditingTaskDraft, "taskId">>) => void;
   onSubmitEdit: (event: FormEvent<HTMLFormElement>, taskId: number) => void;
   onCancelEdit: () => void;
@@ -1806,6 +1953,7 @@ interface TaskSectionProps {
   onComplete: (taskId: number) => void;
   onReopen: (taskId: number) => void;
   onDelete?: (taskId: number) => void;
+  onToggleMainQuest: (taskId: number) => void;
   onReorder?: (orderedTaskIds: number[]) => void;
 }
 
@@ -1817,6 +1965,7 @@ function TaskSection({
   action,
   disabled,
   editingTask,
+  mainQuestTaskId,
   onEditDraftChange,
   onSubmitEdit,
   onCancelEdit,
@@ -1824,6 +1973,7 @@ function TaskSection({
   onComplete,
   onReopen,
   onDelete,
+  onToggleMainQuest,
   onReorder
 }: TaskSectionProps) {
   return (
@@ -1838,11 +1988,12 @@ function TaskSection({
       <div className="task-stack">
         {tasks.map((task) => {
           const isEditing = editingTask?.taskId === task.id;
+          const isMainQuest = mainQuestTaskId === task.id;
           const actionDisabled = disabled || (editingTask !== null && !isEditing);
 
           return (
             <article
-              className={`task-item ${task.status === "done" ? "is-done" : ""} ${isEditing ? "is-editing" : ""}`}
+              className={`task-item ${task.status === "done" ? "is-done" : ""} ${isEditing ? "is-editing" : ""} ${isMainQuest ? "is-main-quest" : ""}`}
               key={task.id}
               draggable={Boolean(onReorder) && !actionDisabled}
               data-e2e={onReorder ? "draggable-task" : undefined}
@@ -1914,12 +2065,25 @@ function TaskSection({
                     <div className="task-meta">
                       <span>{task.urgency === "urgent" ? <AlarmClock size={14} /> : null}{task.urgency === "urgent" ? "紧急" : "常规"}</span>
                       <span>{task.category === "work" ? <BriefcaseBusiness size={14} /> : <BookOpen size={14} />}{task.category === "work" ? "工作" : "学习"}</span>
+                      {isMainQuest ? <span className="main-quest-badge" data-e2e="main-quest-badge"><Sparkles size={14} aria-hidden="true" />今日主线</span> : null}
                     </div>
                     <p>{task.content}</p>
                   </div>
                   <div className="task-actions">
                     <button type="button" title="编辑" aria-label="编辑" data-e2e="edit-task" onClick={() => onStartEdit(task)} disabled={actionDisabled}>
                       <Pencil size={16} aria-hidden="true" />
+                    </button>
+                    <button
+                      className="main-quest-action"
+                      type="button"
+                      title={isMainQuest ? "取消今日主线" : "设置为今日主线"}
+                      aria-label={isMainQuest ? "取消今日主线" : "设置为今日主线"}
+                      aria-pressed={isMainQuest}
+                      data-e2e="toggle-main-quest"
+                      onClick={() => onToggleMainQuest(task.id)}
+                      disabled={actionDisabled}
+                    >
+                      <Sparkles size={16} aria-hidden="true" />
                     </button>
                     {action === "complete" ? (
                       <button type="button" title="完成" aria-label="完成" data-e2e="complete-task" onClick={() => onComplete(task.id)} disabled={actionDisabled}>
@@ -1944,6 +2108,30 @@ function TaskSection({
       </div>
     </section>
   );
+}
+
+function getMainQuestTaskId(mainQuestByDate: AppSettingsState["mainQuestByDate"], planDate: string, tasks: Task[]): number | null {
+  const taskId = mainQuestByDate[planDate];
+  if (!Number.isSafeInteger(taskId) || taskId <= 0) {
+    return null;
+  }
+
+  return tasks.some((task) => task.id === taskId) ? taskId : null;
+}
+
+function updateMainQuestByDate(
+  mainQuestByDate: AppSettingsState["mainQuestByDate"],
+  planDate: string,
+  taskId: number | null
+): AppSettingsState["mainQuestByDate"] {
+  const nextMainQuestByDate = { ...mainQuestByDate };
+  if (taskId === null) {
+    delete nextMainQuestByDate[planDate];
+  } else {
+    nextMainQuestByDate[planDate] = taskId;
+  }
+
+  return nextMainQuestByDate;
 }
 
 function getInitialBackgroundColor(): string {
@@ -1984,6 +2172,8 @@ function isBackgroundColorCommand(command: unknown): command is BackgroundColorC
 }
 
 type PetDisplayState = PetViewState & { interventionAction: InterventionAction };
+type PetInterventionStage = "none" | "stage1" | "stage2" | "stage3" | "stage4";
+type PetInterventionMotion = "none" | "bottom-run" | "fullscreen-run" | "center-roll";
 
 interface PetDragSession {
   pointerId: number;
@@ -2002,7 +2192,7 @@ interface PetShellProps {
 }
 
 
-function PetShell({ initialPlan, planClient }: PetShellProps) {
+export function PetShell({ initialPlan, planClient }: PetShellProps) {
   const [petState, setPetState] = useState<PetDisplayState>(() => buildPetStateFromView(initialPlan));
   const [petCharacter, setPetCharacter] = useState<PetCharacter>(getDefaultPetCharacter());
   const [petBehaviorSettings, setPetBehaviorSettings] = useState(() => getDefaultPetBehaviorSettings());
@@ -2010,6 +2200,7 @@ function PetShell({ initialPlan, planClient }: PetShellProps) {
   const [isDodgingPet, setIsDodgingPet] = useState(false);
   const [isBurstDodgingPet, setIsBurstDodgingPet] = useState(false);
   const [isDraggingPet, setIsDraggingPet] = useState(false);
+  const [isForceInterventionActive, setIsForceInterventionActive] = useState(() => initialPlan.intervention.action === "force-animation");
   const clickCountRef = useRef(0);
   const resetInteractionRef = useRef<number | null>(null);
   const dodgeTimeoutRef = useRef<number | null>(null);
@@ -2030,6 +2221,9 @@ function PetShell({ initialPlan, planClient }: PetShellProps) {
   const suppressNextClickRef = useRef(false);
   const idleAnimationFrameRef = useRef<number | null>(null);
   const idleAnimationIntervalRef = useRef<number | null>(null);
+  const interventionMotionFrameRef = useRef<number | null>(null);
+  const forceInterventionTimeoutRef = useRef<number | null>(null);
+  const forceInterventionSeenRef = useRef(false);
   const dizzyTimeoutRef = useRef<number | null>(null);
   const dizzyUntilRef = useRef(0);
   const dizzyTokenRef = useRef(0);
@@ -2116,6 +2310,13 @@ function PetShell({ initialPlan, planClient }: PetShellProps) {
 
     schedulePetIdleClamp();
     idleAnimationIntervalRef.current = window.setInterval(schedulePetIdleClamp, 1000);
+  };
+
+  const cancelPetInterventionMotion = () => {
+    if (interventionMotionFrameRef.current !== null) {
+      window.cancelAnimationFrame(interventionMotionFrameRef.current);
+      interventionMotionFrameRef.current = null;
+    }
   };
 
   const cancelPetVisualAnimationForDrag = () => {
@@ -2266,6 +2467,11 @@ function PetShell({ initialPlan, planClient }: PetShellProps) {
     if (burstDodgeTimeoutRef.current !== null) {
       window.clearTimeout(burstDodgeTimeoutRef.current);
     }
+    if (forceInterventionTimeoutRef.current !== null) {
+      window.clearTimeout(forceInterventionTimeoutRef.current);
+      forceInterventionTimeoutRef.current = null;
+    }
+    cancelPetInterventionMotion();
     if (dizzyTimeoutRef.current !== null) {
       window.clearTimeout(dizzyTimeoutRef.current);
       dizzyTimeoutRef.current = null;
@@ -2273,6 +2479,65 @@ function PetShell({ initialPlan, planClient }: PetShellProps) {
     dizzyUntilRef.current = 0;
     dizzyTokenRef.current += 1;
   }, []);
+
+  useEffect(() => {
+    const isForceIntervention = petState.interventionAction === "force-animation";
+    if (!isForceIntervention) {
+      forceInterventionSeenRef.current = false;
+      if (forceInterventionTimeoutRef.current !== null) {
+        window.clearTimeout(forceInterventionTimeoutRef.current);
+        forceInterventionTimeoutRef.current = null;
+      }
+      setIsForceInterventionActive(false);
+      return;
+    }
+
+    if (forceInterventionSeenRef.current) {
+      return;
+    }
+
+    forceInterventionSeenRef.current = true;
+    setIsForceInterventionActive(true);
+    if (forceInterventionTimeoutRef.current !== null) {
+      window.clearTimeout(forceInterventionTimeoutRef.current);
+    }
+    forceInterventionTimeoutRef.current = window.setTimeout(() => {
+      setIsForceInterventionActive(false);
+      forceInterventionTimeoutRef.current = null;
+    }, PET_FORCE_INTERVENTION_MS);
+  }, [petState.interventionAction]);
+
+  const petInterventionMotion = getPetInterventionMotion(petState.interventionAction, isForceInterventionActive);
+
+  useEffect(() => {
+    cancelPetInterventionMotion();
+    if (petInterventionMotion === "none") {
+      return;
+    }
+
+    const startedAt = window.performance.now();
+    const tick = (timestamp: number) => {
+      interventionMotionFrameRef.current = null;
+      if (!isPetDragActive()) {
+        const rig = petRigRef.current;
+        if (rig) {
+          const nextPosition = calculatePetInterventionMotionPosition({
+            motion: petInterventionMotion,
+            elapsedMs: timestamp - startedAt,
+            viewportWidth: window.innerWidth,
+            viewportHeight: window.innerHeight,
+            petWidth: rig.offsetWidth,
+            petHeight: rig.offsetHeight
+          });
+          applyPetDomPosition(nextPosition.left, nextPosition.top);
+        }
+      }
+      interventionMotionFrameRef.current = window.requestAnimationFrame(tick);
+    };
+
+    interventionMotionFrameRef.current = window.requestAnimationFrame(tick);
+    return cancelPetInterventionMotion;
+  }, [petInterventionMotion]);
 
   const isPetDragActive = () => dragSessionRef.current !== null || dragInitLockRef.current;
 
@@ -2642,11 +2907,14 @@ function PetShell({ initialPlan, planClient }: PetShellProps) {
   const displayState = isBurstDodgingPet
     ? { ...petState, mood: "escape" as PetMood, message: "瞬闪中，10 秒后复原", interventionAction: "none" as InterventionAction }
     : overrideMood ? { ...petState, mood: overrideMood, message: getPetInteractionMessage(overrideMood, petState.message) } : petState;
+  const interventionStage = getPetInterventionStage(displayState.interventionAction, isForceInterventionActive);
+  const shouldShowForceStudyText = interventionStage === "stage4";
 
   return (
     <main
-      className={`pet-shell pet-${displayState.mood} pet-action-${displayState.interventionAction ?? "none"}${isDraggingPet ? " is-grabbed" : ""}${isBurstDodgingPet ? " is-burst-dodging" : ""}`}
+      className={`pet-shell pet-${displayState.mood} pet-action-${displayState.interventionAction ?? "none"} pet-intervention-${interventionStage}${shouldShowForceStudyText ? " is-force-intervention-active" : ""}${isDraggingPet ? " is-grabbed" : ""}${isBurstDodgingPet ? " is-burst-dodging" : ""}`}
       data-e2e="desktop-pet"
+      data-intervention-stage={interventionStage}
       role="button"
       tabIndex={0}
       aria-label={`LetsPlan ${displayState.percentage}%`}
@@ -2679,6 +2947,23 @@ function PetShell({ initialPlan, planClient }: PetShellProps) {
         }
       }}
     >
+      {shouldShowForceStudyText ? (
+        <div className="pet-force-text-field" data-e2e="pet-force-text-field" aria-hidden="true">
+          {PET_FORCE_TEXT_ITEMS.map((item) => (
+            <span
+              key={item.id}
+              style={{
+                "--pet-force-text-left": item.left,
+                "--pet-force-text-top": item.top,
+                "--pet-force-text-delay": item.delay,
+                "--pet-force-text-duration": item.duration
+              } as CSSProperties}
+            >
+              {PET_FORCE_STUDY_TEXT}
+            </span>
+          ))}
+        </div>
+      ) : null}
       <div className="pet-rig" ref={petRigRef}>
         <div className="pet-bubble">
           <strong>{displayState.percentage}%</strong>
@@ -2736,10 +3021,11 @@ function buildPetStateFromStatus(status: PetStatusSnapshot): PetDisplayState {
     };
   }
   if (status.interventionLevel && status.interventionLevel !== "none") {
+    const interventionAction = status.interventionAction && status.interventionAction !== "none" ? status.interventionAction : "hint";
     return {
       ...state,
-      interventionAction: status.interventionAction ?? "hint",
-      mood: "warning",
+      interventionAction,
+      mood: getPetMoodForInterventionAction(interventionAction),
       message: status.interventionMessage || state.message
     };
   }
@@ -2768,6 +3054,71 @@ function getPetInteractionMessage(mood: PetMood, fallback: string): string {
   }
 
   return fallback;
+}
+
+function getPetMoodForInterventionAction(action: InterventionAction): PetMood {
+  return action === "pet-approach" || action === "center-intervention" || action === "force-animation" ? "escape" : "warning";
+}
+
+function getPetInterventionStage(action: InterventionAction, isForceInterventionActive: boolean): PetInterventionStage {
+  if (action === "hint") {
+    return "stage1";
+  }
+  if (action === "pet-approach") {
+    return "stage2";
+  }
+  if (action === "center-intervention") {
+    return "stage3";
+  }
+  if (action === "force-animation" && isForceInterventionActive) {
+    return "stage4";
+  }
+
+  return "none";
+}
+
+function getPetInterventionMotion(action: InterventionAction, isForceInterventionActive: boolean): PetInterventionMotion {
+  if (action === "pet-approach") {
+    return "bottom-run";
+  }
+  if (action === "center-intervention") {
+    return "fullscreen-run";
+  }
+  if (action === "force-animation" && isForceInterventionActive) {
+    return "center-roll";
+  }
+
+  return "none";
+}
+
+interface PetInterventionMotionInput {
+  motion: PetInterventionMotion;
+  elapsedMs: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  petWidth: number;
+  petHeight: number;
+}
+
+function calculatePetInterventionMotionPosition(input: PetInterventionMotionInput): PetDomPosition {
+  const maxX = Math.max(0, input.viewportWidth - input.petWidth);
+  const maxY = Math.max(0, input.viewportHeight - input.petHeight);
+  if (input.motion === "center-roll") {
+    return { left: Math.round(maxX / 2), top: Math.round(maxY / 2) };
+  }
+  if (input.motion === "bottom-run") {
+    const cycleMs = 5200;
+    const progress = (input.elapsedMs % cycleMs) / cycleMs;
+    const bounce = progress <= 0.5 ? progress * 2 : (1 - progress) * 2;
+    return { left: Math.round(maxX * bounce), top: maxY };
+  }
+  if (input.motion === "fullscreen-run") {
+    const x = maxX * (0.5 + Math.sin(input.elapsedMs / 780) * 0.5);
+    const y = maxY * (0.5 + Math.sin(input.elapsedMs / 530 + Math.PI / 3) * 0.5);
+    return { left: Math.round(x), top: Math.round(y) };
+  }
+
+  return { left: 0, top: 0 };
 }
 
 function getWindowPlanClient(): PlanClient | null {

@@ -1,4 +1,4 @@
-﻿import type { HabitStats, Task } from "../database/types.js";
+import type { HabitStats, Task } from "../database/types.js";
 
 export type InterventionLevel = "none" | "l1" | "l2" | "l3" | "l4";
 export type InterventionReason = "none" | "habit-recovery" | "habit-broken" | "idle";
@@ -236,13 +236,13 @@ function getInterventionMessage(level: InterventionLevel, reason: InterventionRe
     return "今天打卡一下，连续感就接回来了";
   }
   if (level === "l4") {
-    return `${idleMinutes} 分钟没推进，强制打断一下`;
+    return `${idleMinutes} 分钟没推进，快去学习！`;
   }
   if (level === "l3") {
-    return `${idleMinutes} 分钟停滞，先处理一个最小任务`;
+    return `${idleMinutes} 分钟停滞，桌宠满屏跑动提醒你`;
   }
   if (level === "l2") {
-    return `${idleMinutes} 分钟没动，桌宠靠近提醒你`;
+    return `${idleMinutes} 分钟没动，桌宠在底部跑动提醒你`;
   }
 
   return `${idleMinutes} 分钟没推进，先动一下`;

@@ -6,11 +6,11 @@
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React" />
   <img src="https://img.shields.io/badge/TypeScript-5.8-3178C6?style=flat-square&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/license-UNLICENSED-lightgrey?style=flat-square" alt="License" />
-  <img src="https://img.shields.io/badge/version-0.1.1-blue?style=flat-square" alt="Version" />
+  <img src="https://img.shields.io/badge/version-1.0.0-blue?style=flat-square" alt="Version" />
 </p>
 
 <p align="center">
-  <b>🐱 每日任务管理 + 桌面宠物陪伴 + 赛博朋克 UI</b>
+  <b>🐱 每日任务管理 + 桌面宠物陪伴 + 中国古风 UI</b>
 </p>
 
 ---
@@ -19,13 +19,20 @@
 
 **Let'sPlan** 是一个本地优先（local-first）的 Windows 桌面每日计划应用，内置一只可与用户互动的桌面宠物。
 
-每天开机，一只会生气、会逃跑、会庆祝的桌面宠物在等你。它不只是装饰——你做任务的效率、点击它的次数、甚至你多久不理它，都会影响它的情绪和行为。任务完成率高，它会开心庆祝；连续戳它多次，它会躲到屏幕边缘。
+v1.0.0 新增**今日主线任务（Main Quest）**功能，并将整体 UI 视觉升级为**中国古风主题**（宋式审美、宣纸墨色、朱砂竹青）。每天开机，一只会生气、会逃跑、会庆祝的桌面宠物在等你——你做任务的效率、点击它的次数、甚至你多久不理它，都会影响它的情绪和行为。
 
-> 🗂️ 每日计划 + 🐾 桌宠系统 + 🎨 赛博朋克 UI
+> 🎯 今日主线 + 🐾 桌宠系统 + 🏯 中国古风 UI
 
 ---
 
 ## ✨ 核心特性
+
+### 🎯 今日主线任务（Main Quest）— v1.0.0 新增
+
+- 每天可设置一个**主线任务**，来自当天已有普通任务
+- 主线任务仅是对现有任务的特殊标记，不创建第二套任务模型
+- 兼容旧数据，无 Main Quest 时自动安全降级
+- 主线任务完成/切换/取消均复用原有任务逻辑
 
 ### 🐾 桌面宠物系统
 
@@ -34,7 +41,6 @@
 - **行为决策**：连续点击超阈值 → 躲避逃跑；频繁戳击 → 瞬闪模式
 - **右键菜单**：打开主窗口 / 打开控制中心 / 切换宠物
 - **拖动支持**：桌面任意拖动，边缘自动裁剪
-- **提示气泡**：阶段性提示任务进度、情绪状态
 
 ### 📅 任务管理系统
 
@@ -58,12 +64,13 @@
 - 本地 SQLite 存储，卸载默认保留数据
 - `electron-updater` 自动更新支持
 
-### 🎨 赛博朋克 UI
+### 🏯 中国古风 UI — v1.0.0
 
-- 深黑底色 + 霓虹青/紫发光
-- 玻璃拟态面板、全息浮动 UI
-- 金属细边框 + 光晕动效
-- 12 色主题调色盘
+- 宋式审美：宣纸米白底色 `#F7F3E9`、墨色文字、朱砂强调、竹青完成态
+- 仿古册页外框 + 印章角标装饰
+- 信笺风格任务卡片，完成时朱砂划线
+- 克制古风动画（卷轴展开、轻微按压）
+- 基于 CSS 变量 token 体系，兼容旧主题
 
 ---
 
@@ -97,12 +104,7 @@ npm run package:win
 npm run dist:win
 ```
 
-产物 `release-win/LetsPlan-0.1.1-win-x64.exe`，支持桌面快捷方式、开始菜单、自定义安装路径。
-
-### 系统要求
-
-- Windows 10 / 11 x64
-- 无需额外运行时（Electron 自带 Chromium）
+产物 `release-win/LetsPlan-1.0.0-win-x64.exe`，支持桌面快捷方式、开始菜单、自定义安装路径。
 
 ---
 
@@ -114,8 +116,8 @@ npm run dist:win
 
 | 下载方式 | 文件 | 说明 |
 |----------|------|------|
-| 📦 **一键安装包 (.exe)** | `LetsPlan-0.1.1-win-x64.exe` | NSIS 安装包，支持桌面快捷方式、开始菜单、自定义安装路径 |
-| 💼 **MSI 安装包 (.msi)** | `LetsPlan-0.1.1-win-x64.msi` | Windows Installer 标准格式 |
+| 📦 **一键安装包 (.exe)** | `LetsPlan-1.0.0-win-x64.exe` | NSIS 安装包，支持桌面快捷方式、开始菜单、自定义安装路径 |
+| 💼 **MSI 安装包 (.msi)** | `LetsPlan-1.0.0-win-x64.msi` | Windows Installer 标准格式 |
 | 🟢 **免安装版** | `win-unpacked/LetsPlan.exe` | 绿色免安装，解压即用，不写注册表 |
 
 > ⚠️ 当前安装包未做正式代码签名，Windows 可能显示"未知发布者"提示，点击"仍要运行"即可。
@@ -152,6 +154,7 @@ Let-sPlan/
 │       │   ├── index.ts       # IPC 接口层、计划视图组装
 │       │   ├── report.ts      # 周报/月报 Markdown/HTML 导出
 │       │   ├── intervention.ts # 行为干预引擎（L1-L4 + 夜间总结）
+│       │   ├── agentInsight.ts # Agent 洞察分析
 │       │   └── types.ts       # API 类型定义
 │       │
 │       ├── database/          # SQLite 数据层
@@ -159,13 +162,14 @@ Let-sPlan/
 │       │   └── types.ts       # 数据模型定义
 │       │
 │       └── ui/                # React UI 渲染进程
-│           ├── App.tsx        # 主界面组件（计划面板 + 控制中心 + 历史窗口）
+│           ├── App.tsx        # 主界面组件（计划面板 + Main Quest + 控制中心 + 历史窗口）
 │           ├── planState.ts   # 计划状态管理（纯函数）
 │           ├── petState.ts    # 桌宠状态机
 │           ├── petVisuals.tsx # 桌宠 SVG 渲染（猫/狗/机器人）
 │           ├── petDrag.ts     # 桌宠拖动交互逻辑
 │           ├── petHitTest.ts  # 桌宠碰撞检测
-│           ├── styles.css     # 赛博朋克全局样式
+│           ├── mockPlan.ts    # 开发用 Mock 数据
+│           ├── styles.css     # 中国古风全局样式
 │           └── index.html     # HTML 入口
 │
 ├── scripts/                   # 构建/打包/验证脚本
@@ -177,9 +181,13 @@ Let-sPlan/
 │   ├── smokePackaged.mjs      # 免安装版 smoke
 │   ├── smokeInstaller.mjs     # 安装器 smoke
 │   ├── smokePetDrag.mjs       # 桌宠拖动 E2E
+│   ├── smokeReleaseArtifacts.mjs # 产物完整性 smoke
 │   ├── stageReleaseChannel.mjs # 发布频道组织
 │   ├── verifyReleaseChannel.mjs # 发布频道验证
-│   └── verifyWindowsSignature.mjs # Windows 签名验证
+│   ├── verifyWindowsSignature.mjs # Windows 签名验证
+│   ├── auditAncientTheme.mjs  # 古风主题审计
+│   ├── checkStaticQuality.mjs # 静态质量检查
+│   └── releaseManifest.mjs    # 发布清单
 │
 ├── tests/
 │   ├── unit/                  # 单元测试 (Vitest)
@@ -192,6 +200,18 @@ Let-sPlan/
 ├── build/                     # 构建资源 (icon.svg → icon.ico)
 └── package.json
 ```
+
+---
+
+## ⚠️ 已知问题（v1.0.0）
+
+以下问题已确认，将在后续版本中修复，不影响日常使用：
+
+- 任务长时间未推进计时器偶发不准确
+- 部分常用功能入口位置存在重复
+- 古风主题在部分控件上仍需微调
+
+如有其他问题欢迎反馈。
 
 ---
 

@@ -1,4 +1,4 @@
-﻿import { existsSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(scriptDirectory, "..");
 const releaseDirectory = resolve(projectRoot, "release-win");
-const version = process.env.npm_package_version || "0.1.0";
+const version = process.env.npm_package_version || "1.0.0";
 const installerPath = resolve(releaseDirectory, `LetsPlan-${version}-win-x64.exe`);
 const appExePath = resolve(releaseDirectory, "win-unpacked", "LetsPlan.exe");
 

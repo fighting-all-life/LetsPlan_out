@@ -1,4 +1,5 @@
 import type { DailyPlanView, PlanSummary } from "../api/index.js";
+import { buildAgentInsight } from "../api/agentInsight.js";
 import { DEFAULT_NIGHTLY_SUMMARY_ENABLED, DEFAULT_NIGHTLY_SUMMARY_TIME, evaluateIntervention, evaluateNightlySummary } from "../api/intervention.js";
 import { formatPlanDate } from "../api/date.js";
 import type { CreateHabitInput, CreateTaskInput, Habit, HabitStats, HabitView, Task, TaskStatus, UpdateTaskInput } from "../database/types.js";
@@ -111,6 +112,11 @@ export function shouldTriggerCompletionCelebration(previousIsCompleted: boolean,
 }
 
 export function createEmptyPlanView(planDate: string): DailyPlanView {
+  const now = new Date();
+  const habitStats = buildHabitStats([]);
+  const intervention = evaluateIntervention({ now, pendingTasks: [], doneTasks: [], habitStats, isCompleted: false });
+  const nightlySummary = evaluateNightlySummary({ now, planDate, pendingTasks: [], doneTasks: [], todayDate: formatPlanDate(now) });
+
   return buildPlanView(
     {
       plan: {
@@ -129,11 +135,13 @@ export function createEmptyPlanView(planDate: string): DailyPlanView {
       },
       isCompleted: false,
       habits: [],
-      habitStats: buildHabitStats([]),
-      intervention: evaluateIntervention({ now: new Date(), pendingTasks: [], doneTasks: [], habitStats: buildHabitStats([]), isCompleted: false }),
-      nightlySummary: evaluateNightlySummary({ now: new Date(), planDate, pendingTasks: [], doneTasks: [], todayDate: formatPlanDate(new Date()) })
+      habitStats,
+      intervention,
+      nightlySummary,
+      agentInsight: buildAgentInsight({ pendingTasks: [], doneTasks: [], habitStats, intervention, isCompleted: false })
     },
-    []
+    [],
+    now
   );
 }
 
@@ -356,6 +364,17 @@ function buildPlanView(view: DailyPlanView, tasks: Task[], now = new Date()): Da
   const isCompleted = total > 0 && doneCount === total;
   const habits = view.habits ?? [];
   const habitStats = buildHabitStats(habits);
+  const intervention = evaluateIntervention({ now, pendingTasks, doneTasks, habitStats, isCompleted });
+  const nightlySummary = evaluateNightlySummary({
+    now,
+    planDate: view.plan.planDate,
+    pendingTasks,
+    doneTasks,
+    enabled: DEFAULT_NIGHTLY_SUMMARY_ENABLED,
+    summaryTime: DEFAULT_NIGHTLY_SUMMARY_TIME,
+    todayDate: formatPlanDate(now)
+  });
+  const agentInsight = buildAgentInsight({ pendingTasks, doneTasks, habitStats, intervention, isCompleted });
 
   return {
     plan: {
@@ -373,16 +392,9 @@ function buildPlanView(view: DailyPlanView, tasks: Task[], now = new Date()): Da
     isCompleted,
     habits,
     habitStats,
-    intervention: evaluateIntervention({ now, pendingTasks, doneTasks, habitStats, isCompleted }),
-    nightlySummary: evaluateNightlySummary({
-      now,
-      planDate: view.plan.planDate,
-      pendingTasks,
-      doneTasks,
-      enabled: DEFAULT_NIGHTLY_SUMMARY_ENABLED,
-      summaryTime: DEFAULT_NIGHTLY_SUMMARY_TIME,
-      todayDate: formatPlanDate(now)
-    })
+    intervention,
+    nightlySummary,
+    agentInsight
   };
 }
 

@@ -1,13 +1,11 @@
 import { execSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(scriptDirectory, "..");
 const releaseDir = resolve(projectRoot, "release-win");
-
-// Read version from package.json
 const pkg = JSON.parse(readFileSync(resolve(projectRoot, "package.json"), "utf8"));
 const version = pkg.version;
 const productName = pkg.build.productName;
@@ -17,72 +15,68 @@ if (!existsSync(releaseDir)) {
   process.exit(1);
 }
 
-// Find installer files
-const files = readdirSync(releaseDir);
-const nsisExe = files.find(f => f.endsWith(".exe") && !f.startsWith("."));
-const msiFile = files.find(f => f.endsWith(".msi") && !f.startsWith("."));
+const nsisExe = `${productName}-${version}-win-x64.exe`;
+const msiFile = `${productName}-${version}-win-x64.msi`;
 const unpackedDir = join(releaseDir, "win-unpacked");
+const zipName = `${productName}-${version}-win-x64.zip`;
+const zipPath = join(releaseDir, zipName);
 
-if (!nsisExe) {
-  console.error("[package-zip] No NSIS installer found in release-win.");
+assertFile(join(releaseDir, nsisExe), "NSIS installer");
+const hasMsi = existsSync(join(releaseDir, msiFile));
+if (!existsSync(unpackedDir)) {
+  console.error("[package-zip] Missing win-unpacked portable directory.");
   process.exit(1);
 }
 
 console.log(`[package-zip] Product: ${productName} v${version}`);
 console.log(`[package-zip] NSIS: ${nsisExe}`);
-if (msiFile) console.log(`[package-zip] MSI:  ${msiFile}`);
+if (hasMsi) {
+  console.log(`[package-zip] MSI:  ${msiFile}`);
+}
 
-const zipName = `${productName}-${version}-win-x64.zip`;
-const zipPath = join(releaseDir, zipName);
-
-// Remove existing zip
 if (existsSync(zipPath)) {
   runPS(`Remove-Item -LiteralPath '${esc(zipPath)}' -Force`);
   console.log(`[package-zip] Removed existing ${zipName}`);
 }
 
-// Create staging directory
 const staging = join(releaseDir, `.zip-staging-${process.pid}`);
 try {
-  // Create structure: 安装版/ + 免安装版/
-  const installerStaging = join(staging, "安装版");
-  const portableStaging = join(staging, "免安装版");
+  const installerStaging = join(staging, "installer");
+  const portableStaging = join(staging, "portable");
   runPS(`New-Item -ItemType Directory -Force -Path '${esc(installerStaging)}', '${esc(portableStaging)}'`);
 
-  // Copy NSIS installer
   copyFile(join(releaseDir, nsisExe), join(installerStaging, nsisExe));
-  console.log(`[package-zip]   + 安装版/${nsisExe}`);
+  console.log(`[package-zip]   + installer/${nsisExe}`);
 
-  // Copy MSI installer if exists
-  if (msiFile) {
+  if (hasMsi) {
     copyFile(join(releaseDir, msiFile), join(installerStaging, msiFile));
-    console.log(`[package-zip]   + 安装版/${msiFile}`);
+    console.log(`[package-zip]   + installer/${msiFile}`);
   }
 
-  // Copy unpacked (portable) directory
-  if (existsSync(unpackedDir)) {
-    runPS(`Copy-Item -Path '${esc(unpackedDir)}\\*' -Destination '${esc(portableStaging)}\\' -Recurse -Force`);
-    console.log(`[package-zip]   + 免安装版/ (${productName}.exe + runtime)`);
-  }
+  runPS(`Copy-Item -Path '${esc(unpackedDir)}\\*' -Destination '${esc(portableStaging)}\\' -Recurse -Force`);
+  console.log(`[package-zip]   + portable/ (${productName}.exe + runtime)`);
 
-  // Create zip
   console.log(`[package-zip] Creating ${zipName} ...`);
   runPS(`Compress-Archive -Path '${esc(staging)}\\*' -DestinationPath '${esc(zipPath)}' -Force`);
-  if (!existsSync(zipPath)) {
-    console.error(`[package-zip] Failed to create ${zipName}.`);
-    process.exit(1);
-  }
+  assertFile(zipPath, "release zip");
 
   const sizeMB = (statSync(zipPath).size / (1024 * 1024)).toFixed(1);
-  console.log(`[package-zip] ✅ ${zipName} (${sizeMB} MB)`);
+  console.log(`[package-zip] ok ${zipName} (${sizeMB} MB)`);
   console.log(`[package-zip]    ${zipPath}`);
-
 } finally {
-  // Cleanup staging
-  try { runPS(`Remove-Item -LiteralPath '${esc(staging)}' -Recurse -Force`); } catch { /* ok */ }
+  try {
+    runPS(`Remove-Item -LiteralPath '${esc(staging)}' -Recurse -Force`);
+  } catch {
+    // Best-effort cleanup only.
+  }
 }
 
-// --- helpers ---
+function assertFile(path, label) {
+  if (!existsSync(path)) {
+    console.error(`[package-zip] Missing ${label}: ${path}`);
+    process.exit(1);
+  }
+}
 
 function copyFile(src, dst) {
   runPS(`Copy-Item -LiteralPath '${esc(src)}' -Destination '${esc(dst)}'`);
@@ -92,10 +86,10 @@ function runPS(cmd) {
   execSync(`powershell -NoProfile -Command "${cmd.replace(/"/g, '\\"')}"`, {
     encoding: "utf8",
     cwd: releaseDir,
-    stdio: ["ignore", "pipe", "pipe"],
+    stdio: ["ignore", "pipe", "pipe"]
   });
 }
 
-function esc(p) {
-  return p.replace(/'/g, "''");
+function esc(path) {
+  return path.replace(/'/g, "''");
 }

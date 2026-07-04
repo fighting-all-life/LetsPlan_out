@@ -1,6 +1,6 @@
 {
   "name": "letsplan",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "description": "A local-first daily planning desktop app.",
   "private": true,
   "author": "LetsPlan",
@@ -22,7 +22,12 @@
     "dist:win:all": "npm run build:icon && npm run build:app && node scripts/prepareReleaseConfig.mjs --disabled && npm run clean:release && electron-builder --win nsis --win msi --x64 --publish=never",
     "package:release:zip": "node scripts/packageReleaseZip.mjs",
     "smoke:package": "node scripts/smokePackaged.mjs",
+    "quality:static": "node scripts/checkStaticQuality.mjs",
+    "audit:ui-theme": "node scripts/auditAncientTheme.mjs",
+    "verify:all": "npm run quality:static && npm run audit:ui-theme && npm run typecheck && npm run test:unit && npm run test:integration && npm run smoke:pet-drag",
     "verify:release": "npm run package:win && npm run smoke:package",
+    "smoke:release-artifacts": "node scripts/smokeReleaseArtifacts.mjs",
+    "verify:release:artifacts": "npm run dist:win:all && npm run package:release:zip && npm run smoke:package && npm run smoke:release-artifacts && npm run release:manifest && npm run verify:release:manifest",
     "test": "vitest run",
     "test:integration": "npm run build:app && node scripts/runIntegration.mjs",
     "test:unit": "vitest run tests/unit",
@@ -37,7 +42,9 @@
     "release:stage": "node scripts/stageReleaseChannel.mjs",
     "verify:release:channel": "node scripts/verifyReleaseChannel.mjs",
     "verify:release:signature": "node scripts/verifyWindowsSignature.mjs",
-    "release:win": "npm run dist:win:signed && npm run release:stage && npm run verify:release:channel && npm run verify:release:signature"
+    "release:win": "npm run dist:win:signed && npm run release:stage && npm run verify:release:channel && npm run verify:release:signature",
+    "release:manifest": "node scripts/releaseManifest.mjs --write",
+    "verify:release:manifest": "node scripts/releaseManifest.mjs --verify"
   },
   "dependencies": {
     "electron-updater": "^6.8.9",
@@ -100,4 +107,3 @@
     "npmRebuild": false
   }
 }
-

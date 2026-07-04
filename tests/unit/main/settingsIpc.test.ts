@@ -119,14 +119,16 @@ describe("registerSettingsIpcHandlers", () => {
       nightlySummaryTime: "22:20",
       petClickDodgeThreshold: 12,
       petDodgeDistance: 180,
-      petBurstDodgeThreshold: 18
+      petBurstDodgeThreshold: 18,
+      mainQuestByDate: { "2026-07-04": 2 }
     })).toMatchObject({
       interventionThresholdMinutes: { l1: 5, l2: 15, l3: 25, l4: 35 },
       nightlySummaryEnabled: false,
       nightlySummaryTime: "22:20",
       petClickDodgeThreshold: 12,
       petDodgeDistance: 180,
-      petBurstDodgeThreshold: 18
+      petBurstDodgeThreshold: 18,
+      mainQuestByDate: { "2026-07-04": 2 }
     });
   });
 
@@ -159,6 +161,9 @@ describe("registerSettingsIpcHandlers", () => {
     expect(() => ipcMain.invoke(SETTINGS_IPC_CHANNELS.setAppSettings, { petClickDodgeThreshold: 2 })).toThrow("petClickDodgeThreshold must be a number from 3 to 30");
     expect(() => ipcMain.invoke(SETTINGS_IPC_CHANNELS.setAppSettings, { petDodgeDistance: 321 })).toThrow("petDodgeDistance must be a number from 40 to 320");
     expect(() => ipcMain.invoke(SETTINGS_IPC_CHANNELS.setAppSettings, { petBurstDodgeThreshold: 3 })).toThrow("petBurstDodgeThreshold must be a number from 4 to 60");
+    expect(() => ipcMain.invoke(SETTINGS_IPC_CHANNELS.setAppSettings, { mainQuestByDate: [] })).toThrow("mainQuestByDate must be an object");
+    expect(() => ipcMain.invoke(SETTINGS_IPC_CHANNELS.setAppSettings, { mainQuestByDate: { bad: 1 } })).toThrow("mainQuestByDate keys must use YYYY-MM-DD");
+    expect(() => ipcMain.invoke(SETTINGS_IPC_CHANNELS.setAppSettings, { mainQuestByDate: { "2026-07-04": 0 } })).toThrow("mainQuestByDate.2026-07-04 must be a positive integer");
     expect(api.calls).toEqual([]);
   });
 });

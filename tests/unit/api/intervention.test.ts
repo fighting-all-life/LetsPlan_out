@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { evaluateIntervention, evaluateNightlySummary, normalizeInterventionThresholds, normalizeSummaryTime } from "../../../src/modules/api/intervention.js";
 import type { HabitStats, Task } from "../../../src/modules/database/types.js";
 
@@ -66,9 +66,9 @@ describe("evaluateIntervention", () => {
 
     expect(evaluateIntervention({ ...base, now: new Date("2026-06-27T08:09:00.000Z") })).toMatchObject({ level: "none" });
     expect(evaluateIntervention({ ...base, now: new Date("2026-06-27T08:10:00.000Z") })).toMatchObject({ level: "l1", action: "hint" });
-    expect(evaluateIntervention({ ...base, now: new Date("2026-06-27T08:20:00.000Z") })).toMatchObject({ level: "l2", action: "pet-approach" });
-    expect(evaluateIntervention({ ...base, now: new Date("2026-06-27T08:30:00.000Z") })).toMatchObject({ level: "l3", action: "center-intervention" });
-    expect(evaluateIntervention({ ...base, now: new Date("2026-06-27T08:40:00.000Z") })).toMatchObject({ level: "l4", action: "force-animation" });
+    expect(evaluateIntervention({ ...base, now: new Date("2026-06-27T08:20:00.000Z") })).toMatchObject({ level: "l2", action: "pet-approach", message: "20 分钟没动，桌宠在底部跑动提醒你" });
+    expect(evaluateIntervention({ ...base, now: new Date("2026-06-27T08:30:00.000Z") })).toMatchObject({ level: "l3", action: "center-intervention", message: "30 分钟停滞，桌宠满屏跑动提醒你" });
+    expect(evaluateIntervention({ ...base, now: new Date("2026-06-27T08:40:00.000Z") })).toMatchObject({ level: "l4", action: "force-animation", message: "40 分钟没推进，快去学习！" });
   });
 
   it("supports custom L1-L4 thresholds", () => {

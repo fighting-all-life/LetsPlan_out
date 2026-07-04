@@ -1,6 +1,7 @@
-﻿import { renderToString } from "react-dom/server";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { App, isNumberDraftValid, isSummaryTimeDraftValid } from "../../../src/modules/ui/App.js";
+import { DEFAULT_APP_SETTINGS } from "../../../src/main/appSettings.js";
+import { App, PetShell, isNumberDraftValid, isSummaryTimeDraftValid } from "../../../src/modules/ui/App.js";
 import { mockDailyPlan } from "../../../src/modules/ui/mockPlan.js";
 
 describe("ui App", () => {
@@ -10,6 +11,7 @@ describe("ui App", () => {
   });
 
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.useRealTimers();
   });
 
@@ -19,6 +21,55 @@ describe("ui App", () => {
     expect(html).toContain("planner-surface");
     expect(html).toContain(mockDailyPlan.tasks[0].content);
     expect(html).toContain("completion-dial");
+    expect(html).toContain("data-e2e=\"agent-insight\"");
+  });
+
+  it("renders Main Quest when a saved task id belongs to the active plan", () => {
+    const html = renderToString(
+      <App
+        initialPlan={mockDailyPlan}
+        initialAppSettings={{ ...DEFAULT_APP_SETTINGS, mainQuestByDate: { [mockDailyPlan.plan.planDate]: mockDailyPlan.tasks[0].id } }}
+      />
+    );
+
+    expect(html).toContain('data-e2e="main-quest-panel"');
+    expect(html).toContain('data-e2e="main-quest-badge"');
+    expect(html).toContain('aria-pressed="true"');
+    expect(html).toContain("今日主线");
+  });
+
+  it("ignores stale Main Quest task ids", () => {
+    const html = renderToString(
+      <App initialPlan={mockDailyPlan} initialAppSettings={{ ...DEFAULT_APP_SETTINGS, mainQuestByDate: { [mockDailyPlan.plan.planDate]: 999 } }} />
+    );
+
+    expect(html).not.toContain('data-e2e="main-quest-panel"');
+    expect(html).not.toContain('data-e2e="main-quest-badge"');
+  });
+  it("keeps history export actions available when Main Quest settings exist", () => {
+    vi.stubGlobal("window", {
+      location: { search: "?view=history" },
+      localStorage: { getItem: vi.fn() }
+    });
+    const planClient = { exportPlanReport: vi.fn() } as unknown as Parameters<typeof App>[0]["planClient"];
+
+    const html = renderToString(
+      <App
+        initialPlan={mockDailyPlan}
+        planClient={planClient}
+        initialAppSettings={{ ...DEFAULT_APP_SETTINGS, mainQuestByDate: { [mockDailyPlan.plan.planDate]: mockDailyPlan.tasks[0].id } }}
+      />
+    );
+
+    expect(html).toContain('data-e2e="history-window-page"');
+    expect(html).toContain('data-e2e="export-today-excel"');
+    expect(html).toContain('data-e2e="export-week-excel"');
+    expect(html).toContain('data-e2e="export-month-excel"');
+    expect(html).toContain('data-e2e="export-all-excel"');
+    expect(html).toContain('data-e2e="export-week-md"');
+    expect(html).toContain('data-e2e="export-week-pdf"');
+    expect(html).toContain('data-e2e="export-month-md"');
+    expect(html).toContain('data-e2e="export-month-pdf"');
   });
 
   it("renders date navigation controls", () => {
@@ -81,8 +132,8 @@ describe("ui App", () => {
     expect(interventionHtml).toContain("data-e2e=\"control-page-intervention\"");
     expect(interventionHtml).toContain("data-e2e=\"intervention-threshold-setting\"");
     expect(interventionHtml).toContain("针对长时间没有完成任务的行为");
-    expect(interventionHtml).toContain("L3 中心干预");
-    expect(interventionHtml).toContain("L4 强制打断");
+    expect(interventionHtml).toContain("L3 满屏跑动");
+    expect(interventionHtml).toContain("L4 居中打滚");
     expect(interventionHtml).toContain("data-e2e=\"nightly-summary-time\"");
     expect(interventionHtml).toContain("data-e2e=\"threshold-l1\"");
     expect(interventionHtml).toContain("确认保存");
@@ -129,6 +180,29 @@ describe("ui App", () => {
     expect(html).toContain('data-e2e="intervention-overlay"');
     expect(html).toContain("强制打断");
   });
+  it("renders staged desktop pet no-progress reminders", () => {
+    const stage1Html = renderToString(<PetShell initialPlan={withIntervention("l1", "hint", "10 分钟没推进，先动一下")} planClient={null} />);
+    const stage2Html = renderToString(<PetShell initialPlan={withIntervention("l2", "pet-approach", "20 分钟没动，桌宠在底部跑动提醒你")} planClient={null} />);
+    const stage3Html = renderToString(<PetShell initialPlan={withIntervention("l3", "center-intervention", "30 分钟停滞，桌宠满屏跑动提醒你")} planClient={null} />);
+    const stage4Html = renderToString(<PetShell initialPlan={withIntervention("l4", "force-animation", "40 分钟没推进，快去学习！")} planClient={null} />);
+
+    expect(stage1Html).toContain('data-intervention-stage="stage1"');
+    expect(stage1Html).toContain("10 分钟没推进，先动一下");
+    expect(stage1Html).not.toContain('data-e2e="pet-force-text-field"');
+
+    expect(stage2Html).toContain('data-intervention-stage="stage2"');
+    expect(stage2Html).toContain("pet-action-pet-approach");
+    expect(stage2Html).toContain('data-pet-mood="escape"');
+
+    expect(stage3Html).toContain('data-intervention-stage="stage3"');
+    expect(stage3Html).toContain("pet-action-center-intervention");
+    expect(stage3Html).toContain('data-pet-mood="escape"');
+
+    expect(stage4Html).toContain('data-intervention-stage="stage4"');
+    expect(stage4Html).toContain("is-force-intervention-active");
+    expect(stage4Html).toContain('data-e2e="pet-force-text-field"');
+    expect(stage4Html).toContain("快去学习！");
+  });
 
   it("validates nightly summary time drafts without falling back to the default time", () => {
     expect(isSummaryTimeDraftValid("22:45")).toBe(true);
@@ -149,3 +223,20 @@ describe("ui App", () => {
     expect(html).toContain(mockDailyPlan.tasks[0].content);
   });
 });
+
+function withIntervention(
+  level: "l1" | "l2" | "l3" | "l4",
+  action: "hint" | "pet-approach" | "center-intervention" | "force-animation",
+  message: string
+): typeof mockDailyPlan {
+  return {
+    ...mockDailyPlan,
+    intervention: {
+      ...mockDailyPlan.intervention,
+      level,
+      action,
+      message,
+      idleMinutes: level === "l1" ? 10 : level === "l2" ? 20 : level === "l3" ? 30 : 40
+    }
+  };
+}

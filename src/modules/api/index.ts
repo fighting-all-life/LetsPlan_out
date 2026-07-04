@@ -1,4 +1,5 @@
 import { LetsPlanDatabase } from "../database/index.js";
+import { buildAgentInsight, type AgentInsightSnapshot } from "./agentInsight.js";
 import type { HabitStats, HabitView, PlanStats, PlanSummary, PlanWithTasks, TaskStatus } from "../database/types.js";
 import { formatPlanDate } from "./date.js";
 import {
@@ -254,6 +255,13 @@ function toDailyPlanView(
     summaryTime: interventionSettings.nightlySummary.time,
     todayDate: formatPlanDate(now)
   });
+  const agentInsight = buildAgentInsight({
+    pendingTasks,
+    doneTasks,
+    habitStats,
+    intervention,
+    isCompleted
+  });
 
   return {
     plan: planWithTasks.plan,
@@ -265,7 +273,8 @@ function toDailyPlanView(
     habits,
     habitStats,
     intervention,
-    nightlySummary
+    nightlySummary,
+    agentInsight
   };
 }
 
@@ -288,6 +297,7 @@ export type {
   UpdateTaskRequest
 };
 export { DEFAULT_PLAN_TIME_ZONE, formatPlanDate } from "./date.js";
+export { buildAgentInsight } from "./agentInsight.js";
 export {
   DEFAULT_INTERVENTION_THRESHOLDS,
   DEFAULT_NIGHTLY_SUMMARY_ENABLED,
