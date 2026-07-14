@@ -1,7 +1,7 @@
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_APP_SETTINGS } from "../../../src/main/appSettings.js";
-import { App, PetShell, isNumberDraftValid, isSummaryTimeDraftValid } from "../../../src/modules/ui/App.js";
+import { App, PetShell, formatHistoryMonthLabel, isNumberDraftValid, isSummaryTimeDraftValid } from "../../../src/modules/ui/App.js";
 import { mockDailyPlan } from "../../../src/modules/ui/mockPlan.js";
 
 describe("ui App", () => {
@@ -72,6 +72,10 @@ describe("ui App", () => {
     expect(html).toContain('data-e2e="export-month-pdf"');
   });
 
+  it("formats the history heatmap month label", () => {
+    expect(formatHistoryMonthLabel("2026-07-14")).toBe("2026年07月");
+    expect(formatHistoryMonthLabel("invalid")).toBe("invalid");
+  });
   it("renders date navigation controls", () => {
     const html = renderToString(<App initialPlan={mockDailyPlan} />);
 
@@ -113,6 +117,11 @@ describe("ui App", () => {
 
     expect(petHtml).toContain("data-e2e=\"control-page-pet\"");
     expect(petHtml).toContain("data-e2e=\"pet-character-setting\"");
+    expect(petHtml).toContain("data-e2e=\"pet-character-cat\"");
+    expect(petHtml).toContain("data-e2e=\"pet-character-dog\"");
+    expect(petHtml).toContain("data-e2e=\"pet-character-robot\"");
+    expect(petHtml).toContain("figures-action-motion-v1");
+    expect(petHtml).not.toContain("data-e2e=\"primary-navigation\"");
     expect(petHtml).not.toContain("data-e2e=\"pet-behavior-setting\"");
 
     expect(behaviorHtml).toContain("data-e2e=\"control-page-behavior\"");

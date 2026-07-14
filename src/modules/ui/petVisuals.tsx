@@ -1,9 +1,19 @@
-﻿import type { ReactElement } from "react";
+import { useId, type ReactElement } from "react";
+import catIdleUrl from "./assets/pets/actions/cat-idle.png";
+import catSleepUrl from "./assets/pets/actions/cat-sleep.png";
+import catWalkUrl from "./assets/pets/actions/cat-walk.png";
+import dogIdleUrl from "./assets/pets/actions/dog-idle.png";
+import dogSleepUrl from "./assets/pets/actions/dog-sleep.png";
+import dogWalkUrl from "./assets/pets/actions/dog-walk.png";
+import robotChargeUrl from "./assets/pets/actions/robot-charge.png";
+import robotIdleUrl from "./assets/pets/actions/robot-idle.png";
+import robotMoveUrl from "./assets/pets/actions/robot-move.png";
 import type { PetMood } from "./petState.js";
 
 export const PET_CHARACTERS = ["cat", "dog", "robot"] as const;
 
 export type PetCharacter = (typeof PET_CHARACTERS)[number];
+export type PetPose = "idle" | "travel" | "rest";
 
 interface PetSpriteProps {
   character?: PetCharacter;
@@ -11,15 +21,60 @@ interface PetSpriteProps {
   title?: string;
 }
 
+interface SpriteFrame {
+  href: string;
+  width: number;
+  height: number;
+}
+
+interface SpriteRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface CharacterMotionSet {
+  source: string;
+  labels: Record<PetPose, string>;
+  idle: SpriteFrame;
+  travel: SpriteFrame;
+  rest: SpriteFrame;
+}
+
 const moodAccent: Record<PetMood, string> = {
-  sleep: "#93c5fd",
-  idle: "#5eead4",
-  focused: "#38bdf8",
-  excited: "#86efac",
-  celebrate: "#facc15",
-  warning: "#fb923c",
-  escape: "#c4b5fd",
-  dizzy: "#fda4af"
+  sleep: "#8EC5E8",
+  idle: "#63B7A7",
+  focused: "#3CC6FF",
+  excited: "#9CCB8A",
+  celebrate: "#F6C34A",
+  warning: "#F08A5D",
+  escape: "#8DA2E3",
+  dizzy: "#EF8FA6"
+};
+
+const motionSets: Record<PetCharacter, CharacterMotionSet> = {
+  cat: {
+    source: "Figures/猫.png",
+    labels: { idle: "待机", travel: "行走", rest: "蜷睡" },
+    idle: { href: catIdleUrl, width: 196, height: 248 },
+    travel: { href: catWalkUrl, width: 283, height: 241 },
+    rest: { href: catSleepUrl, width: 278, height: 206 }
+  },
+  dog: {
+    source: "Figures/狗.png",
+    labels: { idle: "待机", travel: "行走", rest: "睡眠" },
+    idle: { href: dogIdleUrl, width: 204, height: 219 },
+    travel: { href: dogWalkUrl, width: 247, height: 223 },
+    rest: { href: dogSleepUrl, width: 272, height: 186 }
+  },
+  robot: {
+    source: "Figures/机器人.png",
+    labels: { idle: "待机", travel: "移动", rest: "充电 / 睡眠" },
+    idle: { href: robotIdleUrl, width: 179, height: 236 },
+    travel: { href: robotMoveUrl, width: 244, height: 222 },
+    rest: { href: robotChargeUrl, width: 312, height: 222 }
+  }
 };
 
 export function isPetCharacter(value: unknown): value is PetCharacter {
@@ -30,240 +85,155 @@ export function getDefaultPetCharacter(): PetCharacter {
   return "cat";
 }
 
+export function getPetPose(_character: PetCharacter, mood: PetMood): PetPose {
+  if (mood === "sleep") {
+    return "rest";
+  }
+  if (mood === "escape") {
+    return "travel";
+  }
+  return "idle";
+}
+
 export function PetSprite({ character = getDefaultPetCharacter(), mood, title = "LetsPlan 桌面宠物" }: PetSpriteProps): ReactElement {
   const accent = moodAccent[mood];
-  const bodyGradientId = "pet-body-gradient-" + character;
-  const faceGradientId = "pet-face-gradient-" + character;
+  const motionSet = motionSets[character];
+  const pose = getPetPose(character, mood);
+  const primaryFrame = motionSet[pose];
+  const secondaryFrame = motionSet.idle;
+  const primaryRect = fitFrame(primaryFrame);
+  const secondaryRect = fitFrame(secondaryFrame);
+  const glowId = useId().replace(/:/g, "") + "-pet-glow";
 
   return (
     <svg
       className={"pet-vector pet-vector-" + character + " pet-vector-" + mood}
       data-pet-character={character}
       data-pet-mood={mood}
-      viewBox="0 0 180 180"
+      data-pet-pose={pose}
+      data-pet-action-label={motionSet.labels[pose]}
+      data-pet-art-direction="figures-action-motion-v1"
+      data-pet-source={motionSet.source}
+      viewBox="0 0 200 200"
       role="img"
-      aria-label={title}
+      aria-label={title + " · " + motionSet.labels[pose]}
       focusable="false"
     >
-      <title>{title}</title>
+      <title>{title + " · " + motionSet.labels[pose]}</title>
       <defs>
-        <radialGradient id={faceGradientId} cx="34%" cy="24%" r="78%">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="58%" stopColor={character === "robot" ? "#dbeafe" : "#fff7ed"} />
-          <stop offset="100%" stopColor={character === "robot" ? "#93c5fd" : "#fed7aa"} />
+        <radialGradient id={glowId}>
+          <stop offset="0%" stopColor={accent} stopOpacity="0.34" />
+          <stop offset="100%" stopColor={accent} stopOpacity="0" />
         </radialGradient>
-        <linearGradient id={bodyGradientId} x1="28%" y1="10%" x2="78%" y2="96%">
-          <stop offset="0%" stopColor={character === "cat" ? "#f8fafc" : character === "dog" ? "#fde68a" : "#bfdbfe"} />
-          <stop offset="100%" stopColor={character === "cat" ? "#cbd5e1" : character === "dog" ? "#f59e0b" : "#60a5fa"} />
-        </linearGradient>
       </defs>
 
-      <ellipse className="pet-ground-shadow" cx="90" cy="156" rx="48" ry="11" />
-      {renderBackgroundAccent(mood, accent)}
-      {character === "cat" ? renderCat(mood, bodyGradientId, faceGradientId, accent) : null}
-      {character === "dog" ? renderDog(mood, bodyGradientId, faceGradientId, accent) : null}
-      {character === "robot" ? renderRobot(mood, bodyGradientId, faceGradientId, accent) : null}
+      <ellipse className="pet-ground-shadow" cx="100" cy="184" rx={pose === "rest" ? 55 : 47} ry="7" />
+      {renderBackgroundAccent(mood, accent, glowId)}
+      {renderPoseEffect(character, pose, accent)}
+      <g className={"pet-figure pet-figure-" + character + " pet-pose-" + pose}>
+        <image
+          className="pet-reference-sprite pet-reference-sprite-primary"
+          href={primaryFrame.href}
+          {...primaryRect}
+          preserveAspectRatio="xMidYMid meet"
+        />
+        {pose === "travel" ? (
+          <image
+            className="pet-reference-sprite pet-reference-sprite-secondary"
+            href={secondaryFrame.href}
+            {...secondaryRect}
+            preserveAspectRatio="xMidYMid meet"
+          />
+        ) : null}
+      </g>
       {renderMoodBadge(mood, accent)}
     </svg>
   );
 }
 
-function renderCat(mood: PetMood, bodyGradientId: string, faceGradientId: string, accent: string): ReactElement {
-  return (
-    <g className="pet-character pet-character-cat">
-      <path className="pet-tail" d="M125 126 C158 118 151 82 126 93 C112 99 121 112 134 107" fill="none" stroke="#334155" strokeWidth="12" strokeLinecap="round" />
-      <ellipse cx="89" cy="124" rx="40" ry="38" fill={"url(#" + bodyGradientId + ")"} stroke="#273142" strokeWidth="5" />
-      <path d="M50 73 L34 34 L72 57 Z" fill={"url(#" + faceGradientId + ")"} stroke="#273142" strokeWidth="5" strokeLinejoin="round" />
-      <path d="M130 73 L146 34 L108 57 Z" fill={"url(#" + faceGradientId + ")"} stroke="#273142" strokeWidth="5" strokeLinejoin="round" />
-      <path d="M46 76 C46 45 69 28 90 28 C111 28 134 45 134 76 C134 104 115 122 90 122 C65 122 46 104 46 76 Z" fill={"url(#" + faceGradientId + ")"} stroke="#273142" strokeWidth="5" />
-      <path d="M57 83 C42 77 34 78 24 83" className="pet-whisker" />
-      <path d="M58 93 C43 96 35 101 27 109" className="pet-whisker" />
-      <path d="M123 83 C138 77 146 78 156 83" className="pet-whisker" />
-      <path d="M122 93 C137 96 145 101 153 109" className="pet-whisker" />
-      {renderFace(mood, "cat", accent)}
-      <ellipse className="pet-paw" cx="73" cy="154" rx="13" ry="8" />
-      <ellipse className="pet-paw" cx="108" cy="154" rx="13" ry="8" />
-    </g>
-  );
+function fitFrame(frame: SpriteFrame): SpriteRect {
+  const scale = Math.min(176 / frame.width, 168 / frame.height);
+  const width = Number((frame.width * scale).toFixed(2));
+  const height = Number((frame.height * scale).toFixed(2));
+  return {
+    x: Number(((200 - width) / 2).toFixed(2)),
+    y: Number((183 - height).toFixed(2)),
+    width,
+    height
+  };
 }
 
-function renderDog(mood: PetMood, bodyGradientId: string, faceGradientId: string, accent: string): ReactElement {
-  return (
-    <g className="pet-character pet-character-dog">
-      <path className="pet-tail" d="M123 128 C150 111 143 88 127 91" fill="none" stroke="#92400e" strokeWidth="12" strokeLinecap="round" />
-      <ellipse cx="90" cy="126" rx="43" ry="36" fill={"url(#" + bodyGradientId + ")"} stroke="#273142" strokeWidth="5" />
-      <path d="M51 66 C29 55 26 90 43 113 C51 124 64 113 60 98 Z" fill="#92400e" stroke="#273142" strokeWidth="5" />
-      <path d="M129 66 C151 55 154 90 137 113 C129 124 116 113 120 98 Z" fill="#92400e" stroke="#273142" strokeWidth="5" />
-      <path d="M45 77 C45 48 67 31 90 31 C113 31 135 48 135 77 C135 105 115 123 90 123 C65 123 45 105 45 77 Z" fill={"url(#" + faceGradientId + ")"} stroke="#273142" strokeWidth="5" />
-      <ellipse cx="90" cy="91" rx="22" ry="17" fill="#fff7ed" stroke="#273142" strokeWidth="4" />
-      <ellipse cx="90" cy="84" rx="7" ry="5" fill="#111827" />
-      {renderFace(mood, "dog", accent)}
-      <ellipse className="pet-paw" cx="70" cy="154" rx="14" ry="8" />
-      <ellipse className="pet-paw" cx="110" cy="154" rx="14" ry="8" />
-    </g>
-  );
-}
-
-function renderRobot(mood: PetMood, bodyGradientId: string, faceGradientId: string, accent: string): ReactElement {
-  return (
-    <g className="pet-character pet-character-robot">
-      <path d="M90 31 L90 18" stroke="#273142" strokeWidth="5" strokeLinecap="round" />
-      <circle className="pet-accent-pop" cx="90" cy="14" r="7" fill={accent} stroke="#273142" strokeWidth="4" />
-      <rect x="45" y="43" width="90" height="76" rx="20" fill={"url(#" + faceGradientId + ")"} stroke="#273142" strokeWidth="5" />
-      <rect x="58" y="104" width="64" height="56" rx="18" fill={"url(#" + bodyGradientId + ")"} stroke="#273142" strokeWidth="5" />
-      <path className="pet-arm" d="M58 119 C38 114 35 137 51 142" fill="none" stroke="#273142" strokeWidth="9" strokeLinecap="round" />
-      <path className="pet-arm" d="M122 119 C142 114 145 137 129 142" fill="none" stroke="#273142" strokeWidth="9" strokeLinecap="round" />
-      <rect x="72" y="121" width="36" height="18" rx="9" fill="#e0f2fe" stroke="#273142" strokeWidth="4" />
-      <circle cx="82" cy="130" r="4" fill={accent} />
-      <circle cx="98" cy="130" r="4" fill="#22c55e" />
-      {renderFace(mood, "robot", accent)}
-      <ellipse className="pet-paw" cx="75" cy="162" rx="13" ry="7" />
-      <ellipse className="pet-paw" cx="105" cy="162" rx="13" ry="7" />
-    </g>
-  );
-}
-
-function renderFace(mood: PetMood, character: PetCharacter, accent: string): ReactElement {
-  const eyeY = character === "robot" ? 74 : 72;
-  const mouthY = character === "dog" ? 101 : character === "robot" ? 94 : 91;
-  const cheekY = character === "robot" ? 91 : 89;
-
-  return (
-    <g className="pet-face-details">
-      {renderEyes(mood, eyeY, character)}
-      <ellipse className="pet-cheek" cx="64" cy={cheekY} rx="8" ry="5" fill="#fb7185" opacity="0.42" />
-      <ellipse className="pet-cheek" cx="116" cy={cheekY} rx="8" ry="5" fill="#fb7185" opacity="0.42" />
-      {renderMouth(mood, mouthY, accent)}
-    </g>
-  );
-}
-
-function renderEyes(mood: PetMood, y: number, character: PetCharacter): ReactElement {
-  if (mood === "sleep") {
+function renderPoseEffect(character: PetCharacter, pose: PetPose, accent: string): ReactElement | null {
+  if (pose === "travel") {
     return (
-      <g className="pet-eyes pet-eyes-sleep">
-        <path d={"M69 " + y + " C74 " + (y + 5) + " 80 " + (y + 5) + " 85 " + y} />
-        <path d={"M95 " + y + " C100 " + (y + 5) + " 106 " + (y + 5) + " 111 " + y} />
+      <g className="pet-travel-dust" fill={accent}>
+        <circle cx="39" cy="164" r="4" />
+        <circle cx="25" cy="171" r="3" opacity="0.68" />
+        <circle cx="17" cy="158" r="2" opacity="0.42" />
       </g>
     );
   }
-
-  if (mood === "celebrate" || mood === "excited") {
+  if (character === "robot" && pose === "rest") {
     return (
-      <g className="pet-eyes pet-eyes-happy">
-        <path d={"M68 " + y + " C73 " + (y - 7) + " 82 " + (y - 7) + " 87 " + y} />
-        <path d={"M93 " + y + " C98 " + (y - 7) + " 107 " + (y - 7) + " 112 " + y} />
+      <g className="pet-charge-rings" fill="none" stroke={accent}>
+        <ellipse cx="100" cy="177" rx="48" ry="10" />
+        <ellipse cx="100" cy="177" rx="33" ry="6" opacity="0.66" />
       </g>
     );
   }
-
-  if (mood === "escape") {
-    return (
-      <g className="pet-eyes pet-eyes-escape">
-        <path d={"M69 " + (y - 5) + " L84 " + (y + 5) + " M84 " + (y - 5) + " L69 " + (y + 5)} />
-        <path d={"M96 " + (y - 5) + " L111 " + (y + 5) + " M111 " + (y - 5) + " L96 " + (y + 5)} />
-      </g>
-    );
-  }
-
-
-  if (mood === "dizzy") {
-    return (
-      <g className="pet-eyes pet-eyes-dizzy">
-        <path d={"M69 " + y + " C82 " + (y - 13) + " 91 " + (y + 4) + " 75 " + (y + 8) + " C64 " + (y + 11) + " 63 " + (y - 5) + " 77 " + (y - 2)} />
-        <path d={"M97 " + y + " C110 " + (y - 13) + " 119 " + (y + 4) + " 103 " + (y + 8) + " C92 " + (y + 11) + " 91 " + (y - 5) + " 105 " + (y - 2)} />
-      </g>
-    );
-  }
-
-  return (
-    <g className="pet-eyes pet-eyes-open">
-      {mood === "focused" || mood === "warning" ? <path className="pet-brow" d={"M64 " + (y - 15) + " C72 " + (y - 19) + " 80 " + (y - 18) + " 87 " + (y - 13)} /> : null}
-      {mood === "focused" || mood === "warning" ? <path className="pet-brow" d={"M93 " + (y - 13) + " C100 " + (y - 18) + " 108 " + (y - 19) + " 116 " + (y - 15)} /> : null}
-      <ellipse cx="77" cy={y} rx={character === "robot" ? 8 : 6} ry={mood === "warning" ? 9 : 7} />
-      <ellipse cx="103" cy={y} rx={character === "robot" ? 8 : 6} ry={mood === "warning" ? 9 : 7} />
-      <circle cx="79" cy={y - 3} r="2" fill="#ffffff" />
-      <circle cx="105" cy={y - 3} r="2" fill="#ffffff" />
-    </g>
-  );
+  return null;
 }
 
-function renderMouth(mood: PetMood, y: number, accent: string): ReactElement {
-  if (mood === "warning") {
-    return <ellipse className="pet-mouth-fill" cx="90" cy={y} rx="6" ry="8" fill={accent} stroke="#273142" strokeWidth="3" />;
-  }
-
-  if (mood === "focused") {
-    return <path className="pet-mouth" d={"M80 " + y + " L100 " + y} />;
-  }
-
-  if (mood === "escape") {
-    return <path className="pet-mouth" d={"M80 " + (y + 4) + " C87 " + (y - 2) + " 94 " + (y - 2) + " 101 " + (y + 4)} />;
-  }
-
-  if (mood === "dizzy") {
-    return <path className="pet-mouth" d={"M78 " + y + " C84 " + (y - 5) + " 91 " + (y + 5) + " 98 " + y} />;
-  }
-
-  return <path className="pet-mouth" d={"M78 " + (y - 2) + " C84 " + (y + 8) + " 96 " + (y + 8) + " 102 " + (y - 2)} />;
-}
-
-function renderBackgroundAccent(mood: PetMood, accent: string): ReactElement | null {
+function renderBackgroundAccent(mood: PetMood, accent: string, glowId: string): ReactElement | null {
   if (mood === "idle" || mood === "focused") {
-    return <circle className="pet-halo" cx="90" cy="82" r="58" fill={accent} opacity="0.12" />;
+    return <circle className="pet-halo" cx="100" cy="94" r="72" fill={"url(#" + glowId + ")"} />;
   }
-
   if (mood === "dizzy") {
     return (
-      <g className="pet-dizzy-stars" fill={accent} stroke="#273142" strokeWidth="2" opacity="0.86">
-        <path d="M32 43 L37 53 L48 55 L40 63 L42 74 L32 69 L22 74 L24 63 L16 55 L27 53 Z" />
-        <path d="M142 24 L146 32 L155 33 L149 39 L151 48 L142 44 L134 48 L136 39 L130 33 L138 32 Z" />
+      <g className="pet-dizzy-stars" fill={accent} stroke="#4E4A49" strokeWidth="2">
+        <path d="M28 46 L33 56 L44 58 L36 66 L38 77 L28 72 L18 77 L20 66 L12 58 L23 56 Z" />
+        <path d="M157 28 L161 36 L170 37 L164 43 L166 52 L157 48 L149 52 L151 43 L145 37 L153 36 Z" />
       </g>
     );
   }
-
   if (mood === "escape") {
     return (
-      <g className="pet-motion-lines" stroke={accent} strokeWidth="5" strokeLinecap="round" opacity="0.7">
-        <path className="pet-motion-line" d="M18 76 L38 76" />
-        <path className="pet-motion-line" d="M14 101 L33 95" />
-        <path className="pet-motion-line" d="M145 52 L160 45" />
+      <g className="pet-motion-lines" stroke={accent} strokeWidth="5" strokeLinecap="round">
+        <path className="pet-motion-line" d="M14 82 L38 82" />
+        <path className="pet-motion-line" d="M10 109 L33 102" />
+        <path className="pet-motion-line" d="M158 56 L178 47" />
       </g>
     );
   }
-
   return null;
 }
 
 function renderMoodBadge(mood: PetMood, accent: string): ReactElement | null {
   if (mood === "sleep") {
     return (
-      <g className="pet-sleep-mark" fill={accent} stroke="#273142" strokeWidth="2">
-        <path d="M128 31 L146 31 L128 49 L148 49" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M143 15 L158 15 L143 30 L160 30" fill="none" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+      <g className="pet-sleep-mark" fill="none" stroke={accent} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M143 31 L161 31 L143 49 L163 49" />
+        <path d="M159 14 L174 14 L159 29 L176 29" opacity="0.72" />
       </g>
     );
   }
-
   if (mood === "celebrate") {
     return (
       <g className="pet-confetti pet-accent-pop">
-        <circle cx="34" cy="36" r="5" fill="#ef4444" />
-        <circle cx="149" cy="70" r="5" fill="#22c55e" />
-        <path d="M139 30 L144 42 L156 43 L147 51 L150 63 L139 56 L128 63 L131 51 L122 43 L134 42 Z" fill={accent} stroke="#273142" strokeWidth="2" />
+        <circle cx="35" cy="37" r="5" fill="#EF8FA6" />
+        <circle cx="166" cy="76" r="5" fill="#9CCB8A" />
+        <path d="M151 29 L156 41 L169 42 L159 50 L162 63 L151 56 L140 63 L143 50 L133 42 L146 41 Z" fill={accent} stroke="#4E4A49" strokeWidth="2" />
       </g>
     );
   }
-
   if (mood === "warning") {
     return (
       <g className="pet-alert-mark pet-accent-pop">
-        <path d="M139 25 L162 66 L116 66 Z" fill={accent} stroke="#273142" strokeWidth="4" strokeLinejoin="round" />
-        <path d="M139 39 L139 52" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" />
-        <circle cx="139" cy="59" r="3" fill="#ffffff" />
+        <path d="M154 25 L177 68 L131 68 Z" fill={accent} stroke="#4E4A49" strokeWidth="4" strokeLinejoin="round" />
+        <path d="M154 40 L154 54" stroke="#ffffff" strokeWidth="5" strokeLinecap="round" />
+        <circle cx="154" cy="61" r="3" fill="#ffffff" />
       </g>
     );
   }
-
   return null;
 }

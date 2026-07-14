@@ -48,7 +48,7 @@ import {
   updateTaskInView
 } from "./planState.js";
 import type { HistoryFilter } from "./planState.js";
-import { PetSprite, getDefaultPetCharacter, isPetCharacter, type PetCharacter } from "./petVisuals.js";
+import { PET_CHARACTERS, PetSprite, getDefaultPetCharacter, isPetCharacter, type PetCharacter } from "./petVisuals.js";
 import { buildPetViewState, type PetMood, type PetProgress, type PetViewState } from "./petState.js";
 import {
   calculatePetDodgeDelta,
@@ -200,7 +200,7 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
   const [customIntervalDays, setCustomIntervalDays] = useState(3);
   const [editingTask, setEditingTask] = useState<EditingTaskDraft | null>(null);
   const [activeRoute, setActiveRoute] = useState<MainRoute>(initialMainRoute);
-  const [controlRouteStack, setControlRouteStack] = useState<ControlCenterRoute[]>([initialControlRoute ?? "home"]);
+  const [controlRouteStack, setControlRouteStack] = useState<ControlCenterRoute[]>([initialControlRoute ?? getInitialControlRoute()]);
   const [historySummaries, setHistorySummaries] = useState<PlanSummary[]>([]);
   const [historyFilter, setHistoryFilter] = useState<HistoryFilter>("all");
   const [isLoading, setIsLoading] = useState(() => Boolean(client) && !initialPlan);
@@ -1006,21 +1006,27 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
           ) : null}
           {reportExportMessage ? <p className="history-export-status" role="status">{reportExportMessage}</p> : null}
           {historySummaries.length > 0 ? (
-            <div className="history-heatmap" aria-label="日历热力图" data-e2e="history-heatmap">
-              {historyHeatmapDays.map((day) => (
-                <button
-                  key={day.planDate}
-                  type="button"
-                  className={getHistoryHeatmapCellClassName(day.intensity, day.planDate === activePlanDate)}
-                  title={getHistoryHeatmapLabel(day)}
-                  aria-label={getHistoryHeatmapLabel(day)}
-                  disabled={isBusy || !day.hasPlan}
-                  onClick={() => void handleLoadPlanDate(day.planDate)}
-                >
-                  <span>{day.planDate.slice(8)}</span>
-                </button>
-              ))}
-            </div>
+            <>
+              <div className="history-heatmap-label" data-e2e="history-heatmap-label">
+                <CalendarDays size={14} aria-hidden="true" />
+                <strong>{formatHistoryMonthLabel(activePlanDate)}</strong>
+              </div>
+              <div className="history-heatmap" aria-label="日历热力图" data-e2e="history-heatmap">
+                {historyHeatmapDays.map((day) => (
+                  <button
+                    key={day.planDate}
+                    type="button"
+                    className={getHistoryHeatmapCellClassName(day.intensity, day.planDate === activePlanDate)}
+                    title={getHistoryHeatmapLabel(day)}
+                    aria-label={getHistoryHeatmapLabel(day)}
+                    disabled={isBusy || !day.hasPlan}
+                    onClick={() => void handleLoadPlanDate(day.planDate)}
+                  >
+                    <span>{day.planDate.slice(8)}</span>
+                  </button>
+                ))}
+              </div>
+            </>
           ) : null}
           {selectedHistorySummary ? (
             <div className="history-detail" data-e2e="history-day-detail">
@@ -1083,16 +1089,18 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
     return (
       <main className="app-shell">
         {backgroundPaletteElement}
-        <nav className="primary-nav" aria-label="主导航" data-e2e="primary-navigation">
-          <button className="primary-nav-button" type="button" data-e2e="history-window" onClick={() => void handleOpenHistoryWindow()} disabled={isBusy}>
-            <ExternalLink size={16} aria-hidden="true" />
-            <span>历史窗口</span>
-          </button>
-          <button className="primary-nav-button active" type="button" data-e2e="settings-toggle" aria-current="page" disabled={isBusy}>
-            <Settings size={17} aria-hidden="true" />
-            <span>控制中心</span>
-          </button>
-        </nav>
+        {currentControlRoute === "home" ? (
+          <nav className="primary-nav" aria-label="主导航" data-e2e="primary-navigation">
+            <button className="primary-nav-button" type="button" data-e2e="history-window" onClick={() => void handleOpenHistoryWindow()} disabled={isBusy}>
+              <ExternalLink size={16} aria-hidden="true" />
+              <span>历史窗口</span>
+            </button>
+            <button className="primary-nav-button active" type="button" data-e2e="settings-toggle" aria-current="page" disabled={isBusy}>
+              <Settings size={17} aria-hidden="true" />
+              <span>控制中心</span>
+            </button>
+          </nav>
+        ) : null}
         <section className="control-center-route route-page" aria-label="控制中心" data-e2e="settings-panel" data-control-route={currentControlRoute}>
           {currentControlRoute === "home" ? (
             <>
@@ -1147,13 +1155,29 @@ export function App({ initialPlan, planClient, initialRoute, initialControlRoute
               </div>
               <div className="pet-character-setting" data-e2e="pet-character-setting">
                 <span>桌宠角色</span>
-                <SegmentedControl
-                  label="桌宠角色"
-                  options={petCharacterOptions}
-                  value={isPetCharacter(appSettings.petCharacter) ? appSettings.petCharacter : getDefaultPetCharacter()}
-                  onChange={handlePetCharacterChange}
-                  disabled={isBusy}
-                />
+                <div className="pet-character-choice-grid" role="radiogroup" aria-label="桌宠角色">
+                  {PET_CHARACTERS.map((character) => {
+                    const option = petCharacterOptions.find((item) => item.value === character);
+                    const isSelected = appSettings.petCharacter === character;
+                    return (
+                      <button
+                        key={character}
+                        className={isSelected ? "pet-character-choice is-selected" : "pet-character-choice"}
+                        type="button"
+                        role="radio"
+                        aria-checked={isSelected}
+                        data-e2e={"pet-character-" + character}
+                        disabled={isBusy}
+                        onClick={() => handlePetCharacterChange(character)}
+                      >
+                        <span className="pet-character-preview" aria-hidden="true">
+                          <PetSprite character={character} mood="idle" title={(option?.label ?? character) + "桌宠预览"} />
+                        </span>
+                        <strong>{option?.label ?? character}</strong>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           ) : null}
@@ -3138,6 +3162,13 @@ function getInitialViewMode(): "planner" | "history" | "pet" | "control" {
   return view === "history" || view === "pet" || view === "control" ? view : "planner";
 }
 
+function getInitialControlRoute(): ControlCenterRoute {
+  if (typeof window === "undefined") {
+    return "home";
+  }
+  const section = new URLSearchParams(window.location.search).get("section");
+  return section === "pet" || section === "behavior" || section === "intervention" ? section : "home";
+}
 function buildPlanSummary(view: DailyPlanView): PlanSummary {
   return {
     planDate: view.plan.planDate,
@@ -3190,6 +3221,10 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "操作失败";
 }
 
+export function formatHistoryMonthLabel(planDate: string): string {
+  const match = /^(\d{4})-(\d{2})/.exec(planDate);
+  return match ? `${match[1]}年${match[2]}月` : planDate;
+}
 function formatDisplayDate(planDate: string): { date: string; weekday: string } {
   const [year, month, day] = planDate.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));

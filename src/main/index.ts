@@ -1,4 +1,4 @@
-﻿import type { BrowserWindow as BrowserWindowType, IpcMainEvent, IpcMainInvokeEvent, MenuItemConstructorOptions, NativeImage } from "electron";
+import type { BrowserWindow as BrowserWindowType, IpcMainEvent, IpcMainInvokeEvent, MenuItemConstructorOptions, NativeImage } from "electron";
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { writeFile } from "node:fs/promises";
@@ -192,9 +192,9 @@ function sanitizeFileName(value: string): string {
 async function createMainWindow(): Promise<void> {
   const nextMainWindow = new BrowserWindow({
     width: 430,
-    height: 640,
-    minWidth: 360,
-    minHeight: 560,
+    height: 760,
+    minWidth: 390,
+    minHeight: 680,
     show: false,
     title: "Let'sPlan",
     webPreferences: {
@@ -413,10 +413,10 @@ async function openHistoryWindow(): Promise<void> {
   }
 
   const nextHistoryWindow = new BrowserWindow({
-    width: 760,
-    height: 720,
-    minWidth: 520,
-    minHeight: 560,
+    width: 430,
+    height: 760,
+    minWidth: 390,
+    minHeight: 680,
     show: false,
     title: "Let'sPlan 历史窗口",
     webPreferences: {
